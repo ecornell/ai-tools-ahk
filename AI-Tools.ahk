@@ -15,6 +15,9 @@ displayResponse := false
 activeWin := ""
 oldClipboard := ""
 
+defaultMode := GetSetting("settings", "default_mode")
+defaultApiKey := GetSetting("settings", "default_api_key")
+
 ;#
 
 tray := A_TrayMenu
@@ -73,7 +76,7 @@ PromptHandler(promptName, append := false) {
 
         prompt := GetSetting("prompt_" promptName, "prompt")
         promptEnd := GetSetting("prompt_" promptName, "prompt_end")
-        mode := GetSetting("prompt_" promptName, "mode")
+        mode := GetSetting("prompt_" promptName, "mode", defaultMode)
         input := GetTextFromClip()
 
         CallAPI(mode, promptName, prompt, input, promptEnd)
@@ -142,7 +145,14 @@ GetBody(mode, promptName, prompt, input, promptStop) {
     stop := GetSetting(mode, "stop", "")
 
     ;; load prompt overrides
-    ;;todo
+    model := GetSetting("prompt_" promptName, "model", model)
+    max_tokens := GetSetting("prompt_" promptName, "max_tokens", max_tokens)
+    temperature := GetSetting("prompt_" promptName, "temperature", temperature)
+    frequency_penalty := GetSetting("prompt_" promptName, "frequency_penalty", frequency_penalty)
+    presence_penalty := GetSetting("prompt_" promptName, "presence_penalty", presence_penalty)
+    top_p := GetSetting("prompt_" promptName, "top_p", top_p)
+    best_of := GetSetting("prompt_" promptName, "best_of", best_of)
+    stop := GetSetting("prompt_" promptName, "stop", stop)
 
     ;
 
@@ -188,16 +198,16 @@ CallAPI(mode, promptName, prompt, input, promptStop) {
     ToolTip statusMessage
 
     body := GetBody(mode, promptName, prompt, input, promptStop)
-    endpoint := GetSetting(mode, "endpoint") ; openai
-    api_key := GetSetting(mode, "api_key") ; azure
+    endpoint := GetSetting(mode, "endpoint") 
+    apiKey := GetSetting(mode, "api_key", defaultApiKey) 
 
     req := ComObject("Msxml2.XMLHTTP")
     req.open("POST", endpoint, true)
     req.onreadystatechange := Ready
 
-    req.SetRequestHeader("Content-Type", "application/json")
-    req.SetRequestHeader("Authorization", "Bearer " api_key)
-    req.SetRequestHeader("api-key", api_key)
+    req.SetRequestHeader("Content-Type", "application/json") 
+    req.SetRequestHeader("Authorization", "Bearer " apiKey) ; openai
+    req.SetRequestHeader("api-key", apiKey) ; azure
 
     bodyJson := Jxon_dump(body, 4)
     ;MsgBox bodyJson

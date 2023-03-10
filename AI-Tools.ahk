@@ -17,6 +17,13 @@ oldClipboard := ""
 
 ;#
 
+tray := A_TrayMenu
+tray.add
+tray.add "Github readme", OpenGithub
+StartWithWindows()
+
+;#
+
 ^+j:: {
     SelectText()
     PromptHandler("spelling")
@@ -82,10 +89,10 @@ PromptHandler(promptName, append := false) {
 
 SelectText() {
     if WinActive("ahk_exe WINWORD.EXE") or
-        WinActive("ahk_exe OUTLOOK.EXE") { 
+        WinActive("ahk_exe OUTLOOK.EXE") {
         ; In Word/Outlook select the current paragraph
         Send "^{Up}^+{Down}+{Left}" ; Move to para start, select para, move left to not include para end
-    } else if WinActive("ahk_exe notepad++.exe") { 
+    } else if WinActive("ahk_exe notepad++.exe") {
         ; In Notepad++ select the current line
         Send "{End}+{Home}"
     } else {
@@ -267,4 +274,36 @@ HandleResponse(data, mode, promptName, input) {
     Sleep 500
     A_Clipboard := oldClipboard
 
+}
+
+OpenGithub(*) {
+    Run "https://github.com/ecornell/ai-tools-ahk#usage"
+}
+
+StartWithWindows() {
+    global sww_shortcut
+    tray.add "Start with Windows", StartWithWindowsAction
+    SplitPath a_scriptFullPath, , , , &script_name
+    sww_shortcut := a_startup "\" script_name ".lnk"
+    if FileExist(sww_shortcut) {
+        fileGetShortcut sww_shortcut, &target  ;# update if script has moved
+        if (target != a_scriptFullPath) {
+            fileCreateShortcut a_scriptFullPath, sww_shortcut
+        }
+        tray.Check("Start with Windows")
+    } else {
+        tray.Uncheck("Start with Windows")
+    }
+}
+
+StartWithWindowsAction(*) {
+    if FileExist(sww_shortcut) {
+        fileDelete(sww_shortcut)
+        tray.Uncheck("Start with Windows")
+        trayTip("Start With Windows", "Shortcut removed", 5)
+    } else {
+        fileCreateShortcut(a_scriptFullPath, sww_shortcut)
+        tray.Check("Start with Windows")
+        trayTip("Start With Windows", "Shortcut created", 5)
+    }
 }

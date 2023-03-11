@@ -55,16 +55,16 @@ To have the script start when windows boots up, select "Start With Windows" from
 &nbsp;
 
 
-## Supported APIs
+## Supported APIs and Models
 OpenAI 
 
-    /v1/chat/completions (Default)
-    /v1/completions  
-    /v1/edits
+    /v1/chat/completions (Default) - gpt-3.5-turbo
+    /v1/completions - text-davinci-003
+    /v1/edits - text-davinci-edit-001
 
 Azure 
 
-    /openai/deployments/***/completions
+    /openai/deployments/***/completions - text-davinci-003
 
 
 ## Credits

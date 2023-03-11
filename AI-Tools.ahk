@@ -328,3 +328,4 @@ StartWithWindowsAction(*) {
         trayTip("Start With Windows", "Shortcut created", 5)
     }
 }
+

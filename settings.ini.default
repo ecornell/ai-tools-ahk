@@ -1,6 +1,7 @@
 #------------------------------------------------------------------------------
 # Settings 
 #
+[settings]
 default_mode=mode_chat_completion
 default_api_key=***
 

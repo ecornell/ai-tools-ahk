@@ -32,7 +32,7 @@ It will also prompt you to enter your OpenAI API key. You can get a API key from
 
 ## Usage
 
-The default hothots and prompts are set to the following:
+The default hotkeys and prompts are set to the following:
 
 `Ctrl+Shift+j` - (Quick Prompt 1) - Auto selects the current line or paragraph and runs the "Fix Spelling" prompt and replaces it with the corrected version.
 
@@ -70,3 +70,4 @@ Azure
 ## Credits
 
 TheArkive (JXON_ahk2) and the AHK community.
+

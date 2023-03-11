@@ -9,6 +9,17 @@
 Persistent
 SendMode "Input"
 
+;# init setup
+if not (FileExist("settings.ini")) {
+    api_key := InputBox("Enter our OpenAI key", "AI-Tools-AHK : Setup", "W400 H100").value
+    if(api_key == "") {
+        MsgBox("You must enter an OpenAI key to use this script. Please restart the script and try again.")
+        ExitApp
+    }
+    FileCopy("settings.ini.default", "settings.ini")
+    IniWrite(api_key,".\settings.ini","settings","default_api_key")
+}
+
 ;#
 
 displayResponse := false

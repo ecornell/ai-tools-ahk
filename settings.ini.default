@@ -3,7 +3,7 @@
 #
 [settings]
 default_mode=mode_chat_completion
-default_api_key=***
+default_api_key=
 
 #------------------------------------------------------------------------------
 # Prompts

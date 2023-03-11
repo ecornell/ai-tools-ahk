@@ -32,7 +32,7 @@ It will also prompt you to enter your OpenAI API key. You can get a API key from
 
 ## Usage
 
-`Ctrl+Shift+j` - (Quick Promt 1) - Runs the "Fix Spelling" prompt and replaces the current line or paragraph of text with the corrected version.
+`Ctrl+Shift+j` - (Quick Prompt 1) - Runs the "Fix Spelling" prompt and replaces the current line or paragraph of text with the corrected version.
 
 `Ctrl+Shift+k` - (Quick Prompt 2) - Run2 the "Continuation" prompt and append it to the text on the current line.
 

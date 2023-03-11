@@ -13,11 +13,11 @@
 
 ## What's this?  
 
-A Windows tool that allows custom OpenAI prompts to be run on text in any window via global hotkeys.
+This is a Windows tool that enables running custom OpenAI prompts on text in any window using global hotkeys.
 
 **Where can it be used?**  
 
-Almost anywhere in windows where you can enter text. Any text editor, search box or command line... even the text edit box that you use to rename files.  
+Almost anywhere in Windows where you can enter text.
 &nbsp;  
 
 
@@ -32,11 +32,11 @@ It will also prompt you to enter your OpenAI API key. You can get a API key from
 
 ## Usage
 
-`Ctrl+Shift+j` - Run the "Fix Spelling" prompt and replaces the current line or paragraph of text with the corrected version.
+`Ctrl+Shift+j` - (Quick Promt 1) - Runs the "Fix Spelling" prompt and replaces the current line or paragraph of text with the corrected version.
 
-`Ctrl+Shift+k` - Run the "Continuation" prompt and append it to the text on the current line.
+`Ctrl+Shift+k` - (Quick Prompt 2) - Run2 the "Continuation" prompt and append it to the text on the current line.
 
-`Ctrl+Alt+Shift+k` - Open prompt menu to select the prompt to run on the selected text.
+`Ctrl+Alt+Shift+k` - (Prompt Menu) - Opens the prompt menu to pick the prompt to run on the selected text.
 
 ### How does it work?
 
@@ -44,7 +44,7 @@ It will also prompt you to enter your OpenAI API key. You can get a API key from
 
 ## Options
 
-`settings.ini` contains the settings for the script. You can edit this file to change the hotkeys or to add your own prompts. 
+The `settings.ini` file contains the settings for the script. You can edit this file to change the prompts, the API mode and model to use, and individual model settings.
 
 
 **Start with windows**  

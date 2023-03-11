@@ -1,8 +1,15 @@
-# Prompts
+#------------------------------------------------------------------------------
+# Settings 
+#
+default_mode=mode_chat_completion
+default_api_key=***
 
+#------------------------------------------------------------------------------
+# Prompts
+#
 [prompt_writting]
 prompt="Improve the writting for clarity and conciseness and correct the spelling (American English) and grammar of the following:\n\n"
-mode=mode_completion
+prompt_end="###"
 
 [prompt_writting_edit]
 prompt="Fix the spelling (American English) and grammar"
@@ -10,46 +17,45 @@ mode=mode_edit
 
 [prompt_spelling]
 prompt="Correct the spelling (American English) and grammar of the following:\n\n"
-mode=mode_completion
+prompt_end="###"
 
 [prompt_shorter]
 prompt="Make the following shorter:\n\n"
-mode=mode_completion
+prompt_end="###"
 
 [prompt_longer]
 prompt="Make the following longer:\n\n"
-mode=mode_completion
+prompt_end="###"
 
 [prompt_tone_professional]
 prompt="Make the following more professional:\n\n"
-mode=mode_completion
+prompt_end="###"
 
 [prompt_simplify]
 prompt="Simplify the following:\n\n"
-mode=mode_completion
+prompt_end="###"
 
 [prompt_summarize]
 prompt="Summarize the following:\n\n"
-mode=mode_completion
+prompt_end="###"
 
 [prompt_explain]
 prompt="Explain the following:\n\n"
-mode=mode_completion
+prompt_end="###"
 
 [prompt_items]
 prompt="Summarize as a statement and identify any action items as a bullet list:\n\n"
-mode=mode_completion
+prompt_end="###"
 
 [prompt_continue]
 prompt=""
-mode=mode_completion
 append=True
 
+#------------------------------------------------------------------------------
 # Modes
-
+#
 [mode_edit]
 endpoint=https://api.openai.com/v1/edits
-api_key=replace_with_openai_api_key
 model="text-davinci-edit-001"
 temperature=0.2
 top_p=1
@@ -57,7 +63,6 @@ stop=["###"]
 
 [mode_chat_completion]
 endpoint=https://api.openai.com/v1/chat/completions
-api_key=replace_with_openai_api_key
 model="gpt-3.5-turbo"
 max_tokens=2000
 temperature=0.2
@@ -67,7 +72,6 @@ presence_penalty=0.0
 
 [mode_completion]
 endpoint=https://api.openai.com/v1/completions
-api_key=replace_with_openai_api_key
 model="text-davinci-003"
 max_tokens=2000
 temperature=0.2
@@ -79,7 +83,7 @@ stop=["###"]
 
 [mode_completion_azure]
 endpoint=https://***.openai.azure.com/openai/deployments/***/completions?api-version=2022-12-01
-api_key=replace_with_openai_api_key
+api_key=***
 model="text-davinci-003"
 max_tokens=2000
 temperature=0.2

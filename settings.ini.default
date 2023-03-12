@@ -48,6 +48,7 @@ prompt="Fix the spelling (American English) and grammar"
 mode=mode_edit
 
 [prompt_spelling_chat_completion]
+prompt_system="I want you to act as an English spelling corrector and grammar improver. I want you to only reply the correction, the improvements and nothing else, do not write explanations."
 prompt="Correct the spelling (American English) and grammar of the following.\nInput: The caat in the hat.\nThe cat in the hat.\nInput: The dog is black and white.\nOutput: The dog is black and white.\nInput: "
 prompt_end="\nOutput: "
 menu_text="Fix spelling && grammar"

@@ -89,7 +89,7 @@ SelectText() {
         Send "^{Up}^+{Down}+{Left}" ; Move to para start, select para, move left to not include para end
     } else if WinActive("ahk_exe notepad++.exe") {
         ; In Notepad++ select the current line
-        Send "{End}+{Home}"
+        Send "{End}+{Home}+{Home}"
     } else {
         Send "^a"
     }

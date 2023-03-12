@@ -5,17 +5,22 @@
 default_mode=mode_chat_completion
 default_api_key=
 
-## Hotkeys  
-# ^ = Ctrl, ! = Alt, + = Shift, # = Win - (https://autohotkey.com/docs/Hotkeys.htm) 
+#------------------------------------------------------------------------------
+# Hotkeys  
+# ^ = Ctrl, ! = Alt, + = Shift, # = Win 
+# See: (https://autohotkey.com/docs/Hotkeys.htm) 
+#------------------------------------------------------------------------------
 hotkey_1     = ^+j
 hotkey_1_prompt = prompt_spelling
 hotkey_2     = ^+k   
 menu_hotkey  = ^!+k  
 
 #------------------------------------------------------------------------------
-## Popup menu
-# first 10 items are 1-0, then a-z
+# Popup menu
+# first 10 items are 1-0, then a-z, unless menu_text contains a & character to 
+# indicate a hotkey
 # - = separator
+#------------------------------------------------------------------------------
 [popup_menu]
 prompt_spelling
 prompt_writting
@@ -32,7 +37,7 @@ prompt_continue
 
 #------------------------------------------------------------------------------
 # Prompts
-#
+#------------------------------------------------------------------------------
 [prompt_writting]
 prompt="Improve the writting for clarity and conciseness and correct the spelling (American English) and grammar of the following:\n\n"
 prompt_end="###"
@@ -90,7 +95,7 @@ menu_text="& Space - Continue writting"
 
 #------------------------------------------------------------------------------
 # Modes
-#
+#------------------------------------------------------------------------------
 [mode_edit]
 endpoint=https://api.openai.com/v1/edits
 model="text-davinci-edit-001"

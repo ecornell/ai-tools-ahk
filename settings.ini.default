@@ -1,9 +1,34 @@
 #------------------------------------------------------------------------------
 # Settings 
-#
+#------------------------------------------------------------------------------
 [settings]
 default_mode=mode_chat_completion
 default_api_key=
+
+## Hotkeys  
+# ^ = Ctrl, ! = Alt, + = Shift, # = Win - (https://autohotkey.com/docs/Hotkeys.htm) 
+hotkey_1     = ^+j
+hotkey_1_prompt = prompt_spelling
+hotkey_2     = ^+k   
+menu_hotkey  = ^!+k  
+
+#------------------------------------------------------------------------------
+## Popup menu
+# first 10 items are 1-0, then a-z
+# - = separator
+[popup_menu]
+prompt_spelling
+prompt_writting
+prompt_shorter
+prompt_longer
+prompt_tone_professional
+prompt_simplify
+-
+prompt_summarize
+prompt_explain
+prompt_items
+-
+prompt_continue
 
 #------------------------------------------------------------------------------
 # Prompts
@@ -11,46 +36,57 @@ default_api_key=
 [prompt_writting]
 prompt="Improve the writting for clarity and conciseness and correct the spelling (American English) and grammar of the following:\n\n"
 prompt_end="###"
+menu_text="Rewrite for clarity"
 
 [prompt_writting_edit]
 prompt="Fix the spelling (American English) and grammar"
 mode=mode_edit
 
 [prompt_spelling]
-prompt="Correct the spelling (American English) and grammar of the following:\n\n"
-prompt_end="###"
+prompt="Correct the spelling (American English) and grammar of the following.\nInput: The caat in the hat.\nThe cat in the hat.\nInput: The dog is black and white.\nOutput: The dog is black and white.\nInput: "
+prompt_end="\nOutput: "
+menu_text="Fix spelling && grammar"
+temperature=0
 
 [prompt_shorter]
 prompt="Make the following shorter:\n\n"
 prompt_end="###"
+menu_text="Make shorter"
 
 [prompt_longer]
 prompt="Make the following longer:\n\n"
 prompt_end="###"
+menu_text="Make longer"
 
 [prompt_tone_professional]
 prompt="Make the following more professional:\n\n"
 prompt_end="###"
+menu_text="Change Tone - Professional"
 
 [prompt_simplify]
 prompt="Simplify the following:\n\n"
 prompt_end="###"
+menu_text="Simplify language"
 
 [prompt_summarize]
 prompt="Summarize the following:\n\n"
 prompt_end="###"
+menu_text="Summarize"
 
 [prompt_explain]
 prompt="Explain the following:\n\n"
 prompt_end="###"
+menu_text="Explain this"
 
 [prompt_items]
 prompt="Summarize as a statement and identify any action items as a bullet list:\n\n"
 prompt_end="###"
+menu_text="Find action items"
 
 [prompt_continue]
 prompt=""
 append=True
+menu_text="& Space - Continue writting"
 
 #------------------------------------------------------------------------------
 # Modes

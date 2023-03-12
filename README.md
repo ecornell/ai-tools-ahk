@@ -23,20 +23,21 @@ Almost anywhere in Windows where you can enter text.
 
 ## Installation  
 
-Download and extract the [latest release](https://github.com/ecornell/ai-tools-ahk/releases) .zip file. If you already have [AutoHotkey](https://www.autohotkey.com) installed then run `AI-Tools.ahk`, otherwise run the `.exe` version which lets you use the script without having AutoHotkey installed. The script doesn't install anything and it's also portable so it can be run from any location.  
+To get started, first download and extract the [latest release](https://github.com/ecornell/ai-tools-ahk/releases) .zip file. If you already have [AutoHotkey](https://www.autohotkey.com) installed, simply run `AI-Tools.ahk`. If not, use the .exe version, which allows you to use the script without having AutoHotkey installed. The script doesn't install anything and is portable, so you can run it from any location. 
 
-On first run, the script will copy the included `setting.ini.default` file to a new `settings.ini` file in the same directory. This file contains the settings for the script. You can edit this file to change the hotkeys or to add your own prompts.
+When you run the script for the first time, it will create a new `settings.ini` file in the same directory. This file contains the script's settings, which you can edit to change the hotkeys or add your own prompts. 
 
-It will also prompt you to enter your OpenAI API key. You can get a API key from [OpenAI](https://platform.openai.com/).
+Additionally, the script will prompt you to enter your OpenAI API key. If you don't have one yet, you can obtain an API key from [OpenAI](https://platform.openai.com/).
+
 
 
 ## Usage
 
 The default hotkeys and prompts are set to the following:
 
-`Ctrl+Shift+j` - (Quick Prompt 1) - Auto selects the current line or paragraph and runs the "Fix Spelling" prompt and replaces it with the corrected version.
+`Ctrl+Shift+j` - (Quick Prompt 1 - Fix Spelling) - Auto selects the current line or paragraph and runs the "Fix Spelling" prompt and replaces it with the corrected version.
 
-`Ctrl+Shift+k` - (Quick Prompt 2) - Auto selects the current line or paragraph and runs the a "Continuation" prompt with it as input and appends the result.
+`Ctrl+Shift+k` - (Quick Prompt 2 - Continue) - Auto selects the current line or paragraph and runs the a "Continuation" prompt with it as input and appends the result.
 
 `Ctrl+Alt+Shift+k` - (Prompt Menu) - Opens the prompt menu to pick the prompt to run on the selected text.
 

@@ -12,15 +12,16 @@ SendMode "Input"
 ;# init setup
 if not (FileExist("settings.ini")) {
     api_key := InputBox("Enter our OpenAI key", "AI-Tools-AHK : Setup", "W400 H100").value
-    if(api_key == "") {
+    if (api_key == "") {
         MsgBox("You must enter an OpenAI key to use this script. Please restart the script and try again.")
         ExitApp
     }
     FileCopy("settings.ini.default", "settings.ini")
-    IniWrite(api_key,".\settings.ini","settings","default_api_key")
+    IniWrite(api_key, ".\settings.ini", "settings", "default_api_key")
 }
 
 ;#
+debug := false
 
 displayResponse := false
 activeWin := ""
@@ -28,6 +29,14 @@ oldClipboard := ""
 
 defaultMode := GetSetting("settings", "default_mode")
 defaultApiKey := GetSetting("settings", "default_api_key")
+
+hotkey1 := GetSetting("settings", "hotkey_1")
+hotkey1_prompt := GetSetting("settings", "hotkey_1_prompt")
+hotkey2 := GetSetting("settings", "hotkey_2")
+menu_hotkey := GetSetting("settings", "menu_hotkey")
+
+;# menu
+InitPopupMenu()
 
 ;#
 
@@ -38,56 +47,28 @@ StartWithWindows()
 
 ;#
 
-^+j:: {
+HotKey hotkey1, (*) => (
     SelectText()
-    PromptHandler("spelling")
-}
+    PromptHandler(hotkey1_prompt))
 
-^+k:: {
+HotKey hotkey2, (*) => (
     SelectText()
-    ShowPopupMenu()
-}
+    ShowPopupMenu())
 
-^!+k:: {
-    ShowPopupMenu()
-}
+HotKey menu_hotkey, (*) => (
+    ShowPopupMenu())
 
 ;###
 
 ShowPopupMenu() {
-    global displayResponse := false
-    id := 1
-
-    iMenu := Menu()
-    iMenu.add "&`` - Display response in new window", MyMenuDisplayCheck
-    iMenu.Add  ; Add a separator line.
-    iMenu.Add "&" id++ " - Improve writting", (*) => PromptHandler("writting")
-    iMenu.Add "&" id++ " - Fix spelling && grammar", (*) => PromptHandler("spelling")
-    iMenu.Add "&" id++ " - Make shorter", (*) => PromptHandler("shorter")
-    iMenu.Add "&" id++ " - Make longer", (*) => PromptHandler("longer")
-    iMenu.Add "&" id++ " - Change Tone - Professional", (*) => PromptHandler("tone-professional")
-    iMenu.Add "&" id++ " - Simplify language", (*) => PromptHandler("simplify")
-    iMenu.Add  ; Add a separator line.
-    iMenu.Add "&" id++ " - Summarize", (*) => PromptHandler("summarize")
-    iMenu.Add "&" id++ " - Explain this", (*) => PromptHandler("explain")
-    iMenu.Add "&" id++ " - Find action items", (*) => PromptHandler("items")
-    iMenu.Add  ; Add a separator line.
-    iMenu.Add "& Space - Continue writting", (*) => PromptHandler("continue")
     iMenu.Show()
-
-    MyMenuDisplayCheck(*) {
-        iMenu.ToggleCheck "&`` - Display response in new window"
-        global displayResponse := !displayResponse
-        iMenu.Show()
-    }
 }
 
 PromptHandler(promptName, append := false) {
     try {
-
-        prompt := GetSetting("prompt_" promptName, "prompt")
-        promptEnd := GetSetting("prompt_" promptName, "prompt_end")
-        mode := GetSetting("prompt_" promptName, "mode", defaultMode)
+        prompt := GetSetting(promptName, "prompt")
+        promptEnd := GetSetting(promptName, "prompt_end")
+        mode := GetSetting(promptName, "mode", defaultMode)
         input := GetTextFromClip()
 
         CallAPI(mode, promptName, prompt, input, promptEnd)
@@ -142,7 +123,7 @@ GetSetting(section, key, defaultValue := "") {
     return value
 }
 
-GetBody(mode, promptName, prompt, input, promptStop) {
+GetBody(mode, promptName, prompt, input, promptEnd) {
     body := Map()
 
     ;; load mode defaults
@@ -156,19 +137,19 @@ GetBody(mode, promptName, prompt, input, promptStop) {
     stop := GetSetting(mode, "stop", "")
 
     ;; load prompt overrides
-    model := GetSetting("prompt_" promptName, "model", model)
-    max_tokens := GetSetting("prompt_" promptName, "max_tokens", max_tokens)
-    temperature := GetSetting("prompt_" promptName, "temperature", temperature)
-    frequency_penalty := GetSetting("prompt_" promptName, "frequency_penalty", frequency_penalty)
-    presence_penalty := GetSetting("prompt_" promptName, "presence_penalty", presence_penalty)
-    top_p := GetSetting("prompt_" promptName, "top_p", top_p)
-    best_of := GetSetting("prompt_" promptName, "best_of", best_of)
-    stop := GetSetting("prompt_" promptName, "stop", stop)
+    model := GetSetting(promptName, "model", model)
+    max_tokens := GetSetting(promptName, "max_tokens", max_tokens)
+    temperature := GetSetting(promptName, "temperature", temperature)
+    frequency_penalty := GetSetting(promptName, "frequency_penalty", frequency_penalty)
+    presence_penalty := GetSetting(promptName, "presence_penalty", presence_penalty)
+    top_p := GetSetting(promptName, "top_p", top_p)
+    best_of := GetSetting(promptName, "best_of", best_of)
+    stop := GetSetting(promptName, "stop", stop)
 
     ;
 
     if (mode == "mode_completion" or mode == "mode_completion_azure") {
-        fullPrompt := prompt . input . promptStop
+        fullPrompt := prompt . input . promptEnd
 
         body["prompt"] := fullPrompt
         body["max_tokens"] := max_tokens
@@ -181,7 +162,7 @@ GetBody(mode, promptName, prompt, input, promptStop) {
         body["model"] := model
 
     } else if (mode == "mode_chat_completion") {
-        content := prompt . input
+        content := prompt . input . promptEnd
 
         body["messages"] := [
             Map("role", "user", "content", content)
@@ -203,25 +184,28 @@ GetBody(mode, promptName, prompt, input, promptStop) {
     return body
 }
 
-CallAPI(mode, promptName, prompt, input, promptStop) {
+CallAPI(mode, promptName, prompt, input, promptEnd) {
 
     statusMessage := "Running . . ."
     ToolTip statusMessage
 
-    body := GetBody(mode, promptName, prompt, input, promptStop)
-    endpoint := GetSetting(mode, "endpoint") 
-    apiKey := GetSetting(mode, "api_key", defaultApiKey) 
+    body := GetBody(mode, promptName, prompt, input, promptEnd)
+    endpoint := GetSetting(mode, "endpoint")
+    apiKey := GetSetting(mode, "api_key", defaultApiKey)
 
     req := ComObject("Msxml2.XMLHTTP")
     req.open("POST", endpoint, true)
     req.onreadystatechange := Ready
 
-    req.SetRequestHeader("Content-Type", "application/json") 
+    req.SetRequestHeader("Content-Type", "application/json")
     req.SetRequestHeader("Authorization", "Bearer " apiKey) ; openai
     req.SetRequestHeader("api-key", apiKey) ; azure
 
     bodyJson := Jxon_dump(body, 4)
-    ;MsgBox bodyJson
+
+    if debug {
+        MsgBox bodyJson
+    }
 
     req.send(bodyJson)
 
@@ -264,7 +248,7 @@ HandleResponse(data, mode, promptName, input) {
     ;; Clean up response text
     text := StrReplace(text, '`r', "") ; remove carriage returns
 
-    append := GetSetting("prompt_" promptName, "append")
+    append := GetSetting(promptName, "append")
     if StrLower(append) == "true" {
         text := input . text
     } else {
@@ -295,6 +279,49 @@ HandleResponse(data, mode, promptName, input) {
     Sleep 500
     A_Clipboard := oldClipboard
 
+}
+
+InitPopupMenu() {
+    global iMenu := Menu()
+    iMenuItemParms := Map()
+
+    iMenu.add "&`` - Display response in new window", NewWindowCheckHandler
+    iMenu.Add  ; Add a separator line.
+
+    menu_items := IniRead("./settings.ini", "popup_menu")
+
+    id := 1
+    loop parse menu_items, "`n" {
+        v_promptName := A_LoopField
+        if (v_promptName != "" and SubStr(v_promptName, 1, 1) != "#") {
+            if (v_promptName = "-") {
+                iMenu.Add  ; Add a separator line.
+            } else {
+                menu_text := GetSetting(v_promptName, "menu_text", v_promptName)
+                if (RegExMatch(menu_text, "^(?!.*&&).*&.*$") == 0) {
+                    if (id == 10)
+                        keyboard_shortcut := "&0 - "
+                    else if (id > 10)
+                        keyboard_shortcut := "&" Chr(id + 86) " - "
+                    else
+                        keyboard_shortcut := "&" id++ " - "
+                    menu_text := keyboard_shortcut menu_text
+                }
+
+                iMenu.Add menu_text, MenuHandler
+                item_count := DllCall("GetMenuItemCount", "ptr", iMenu.Handle)
+                iMenuItemParms[item_count] := v_promptName
+            }
+        }
+    }
+    MenuHandler(ItemName, ItemPos, MyMenu) {
+        PromptHandler(iMenuItemParms[ItemPos])
+    }
+    NewWindowCheckHandler(*) {
+        iMenu.ToggleCheck "&`` - Display response in new window"
+        global displayResponse := !displayResponse
+        iMenu.Show()
+    }
 }
 
 OpenGithub(*) {
@@ -328,4 +355,3 @@ StartWithWindowsAction(*) {
         trayTip("Start With Windows", "Shortcut created", 5)
     }
 }
-

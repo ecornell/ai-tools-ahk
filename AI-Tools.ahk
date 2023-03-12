@@ -148,9 +148,24 @@ GetBody(mode, promptName, prompt, input, promptEnd) {
 
     ;
 
-    if (mode == "mode_completion" or mode == "mode_completion_azure") {
-        fullPrompt := prompt . input . promptEnd
+    if (mode == "mode_chat_completion") {
+        content := prompt . input . promptEnd
+        messages := []
+        prompt_system := GetSetting(promptName, "prompt_system", "")
+        if (prompt_system != "") {
+            messages.Push( Map("role", "system", "content", prompt_system) )
+        }
+        messages.Push( Map("role", "user", "content", content) )
+        body["messages"] := messages
+        body["max_tokens"] := max_tokens
+        body["temperature"] := temperature
+        body["frequency_penalty"] := frequency_penalty
+        body["presence_penalty"] := presence_penalty
+        body["top_p"] := top_p
+        body["model"] := model
 
+    } else if (mode == "mode_completion" or mode == "mode_completion_azure") {
+        fullPrompt := prompt . input . promptEnd
         body["prompt"] := fullPrompt
         body["max_tokens"] := max_tokens
         body["temperature"] := temperature
@@ -159,19 +174,6 @@ GetBody(mode, promptName, prompt, input, promptEnd) {
         body["top_p"] := top_p
         body["best_of"] := best_of
         body["stop"] := stop
-        body["model"] := model
-
-    } else if (mode == "mode_chat_completion") {
-        content := prompt . input . promptEnd
-
-        body["messages"] := [
-            Map("role", "user", "content", content)
-        ]
-        body["max_tokens"] := max_tokens
-        body["temperature"] := temperature
-        body["frequency_penalty"] := frequency_penalty
-        body["presence_penalty"] := presence_penalty
-        body["top_p"] := top_p
         body["model"] := model
 
     } else if (mode == "mode_edit") {

@@ -11,7 +11,7 @@ default_api_key=
 # See: (https://autohotkey.com/docs/Hotkeys.htm) 
 #------------------------------------------------------------------------------
 hotkey_1     = ^+j
-hotkey_1_prompt = prompt_spelling
+hotkey_1_prompt = prompt_spelling_chat_completion
 hotkey_2     = ^+k   
 menu_hotkey  = ^!+k  
 
@@ -22,7 +22,7 @@ menu_hotkey  = ^!+k
 # - = separator
 #------------------------------------------------------------------------------
 [popup_menu]
-prompt_spelling
+prompt_spelling_chat_completion
 prompt_writting
 prompt_shorter
 prompt_longer
@@ -47,7 +47,7 @@ menu_text="Rewrite for clarity"
 prompt="Fix the spelling (American English) and grammar"
 mode=mode_edit
 
-[prompt_spelling]
+[prompt_spelling_chat_completion]
 prompt="Correct the spelling (American English) and grammar of the following.\nInput: The caat in the hat.\nThe cat in the hat.\nInput: The dog is black and white.\nOutput: The dog is black and white.\nInput: "
 prompt_end="\nOutput: "
 menu_text="Fix spelling && grammar"

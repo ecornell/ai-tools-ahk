@@ -35,11 +35,11 @@ Additionally, the script will prompt you to enter your OpenAI API key. If you do
 
 The default hotkeys and prompts are set to the following:
 
-`Ctrl+Shift+j` - (Quick Prompt 1 - Fix Spelling) - Auto selects the current line or paragraph and runs the "Fix Spelling" prompt and replaces it with the corrected version.
+`Ctrl+Shift+j` - (Auto-select text - Fix spelling) - Auto selects the current line or paragraph and runs the "Fix Spelling" prompt and replaces it with the corrected version.
 
-`Ctrl+Shift+k` - (Quick Prompt 2 - Continue) - Auto selects the current line or paragraph and runs the a "Continuation" prompt with it as input and appends the result.
+`Ctrl+Shift+k` - (Auto-select text - Prompt Menu) - Auto selects the current line or paragraph and opens the prompt menu.
 
-`Ctrl+Alt+Shift+k` - (Prompt Menu) - Opens the prompt menu to pick the prompt to run on the selected text.
+`Ctrl+Alt+Shift+k` - (Manual-select text - Prompt Menu) - Opens the prompt menu to pick the prompt to run on the selected text.
 
 ### How does it work?
 

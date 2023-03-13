@@ -5,6 +5,7 @@
 #Requires AutoHotkey v2.0
 #singleInstance force
 #Include "_jxon.ahk"
+#include "_Cursor.ahk"
 
 Persistent
 SendMode "Input"
@@ -22,6 +23,8 @@ if not (FileExist("settings.ini")) {
 
 ;#
 debug := false
+settings_cache := Map()
+isRunning := false
 
 displayResponse := false
 activeWin := ""
@@ -66,6 +69,11 @@ ShowPopupMenu() {
 
 PromptHandler(promptName, append := false) {
     try {
+
+        global isRunning := true 
+        ShowWaitTooltip()
+        SetSystemCursor(GetSetting("settings", "cursor_wait_animation_file","wait-1.ani"))
+
         prompt := GetSetting(promptName, "prompt")
         promptEnd := GetSetting(promptName, "prompt_end")
         mode := GetSetting(promptName, "mode", defaultMode)
@@ -74,9 +82,10 @@ PromptHandler(promptName, append := false) {
         CallAPI(mode, promptName, prompt, input, promptEnd)
 
     } catch as err {
-        ToolTip()
+        global isRunning := false 
+        RestoreCursor()
         MsgBox Format("{1}: {2}.`n`nFile:`t{3}`nLine:`t{4}`nWhat:`t{5}", type(err), err.Message, err.File, err.Line, err.What), , 16
-        throw err
+        ;throw err
     }
 }
 
@@ -115,12 +124,21 @@ GetTextFromClip() {
     return text
 }
 
+
 GetSetting(section, key, defaultValue := "") {
-    value := IniRead(".\settings.ini", section, key, defaultValue)
-    if IsNumber(value) {
-        value := Number(value)
+    global settings_cache
+    if (settings_cache.Has(section . key . defaultValue)) {
+        return settings_cache.Get(section . key . defaultValue)
+    } else {
+        value := IniRead(".\settings.ini", section, key, defaultValue)
+        if IsNumber(value) {
+            value := Number(value)
+        } else {
+            value := Unescape(value)
+        }
+        settings_cache.Set(section . key . defaultValue, value)
+        return value
     }
-    return value
 }
 
 GetBody(mode, promptName, prompt, input, promptEnd) {
@@ -153,9 +171,9 @@ GetBody(mode, promptName, prompt, input, promptEnd) {
         messages := []
         prompt_system := GetSetting(promptName, "prompt_system", "")
         if (prompt_system != "") {
-            messages.Push( Map("role", "system", "content", prompt_system) )
+            messages.Push(Map("role", "system", "content", prompt_system))
         }
-        messages.Push( Map("role", "user", "content", content) )
+        messages.Push(Map("role", "user", "content", content))
         body["messages"] := messages
         body["max_tokens"] := max_tokens
         body["temperature"] := temperature
@@ -188,9 +206,6 @@ GetBody(mode, promptName, prompt, input, promptEnd) {
 
 CallAPI(mode, promptName, prompt, input, promptEnd) {
 
-    statusMessage := "Running . . ."
-    ToolTip statusMessage
-
     body := GetBody(mode, promptName, prompt, input, promptEnd)
     endpoint := GetSetting(mode, "endpoint")
     apiKey := GetSetting(mode, "api_key", defaultApiKey)
@@ -213,11 +228,8 @@ CallAPI(mode, promptName, prompt, input, promptEnd) {
 
     Ready() {
         if (req.readyState != 4) {  ; Not done yet.
-            statusMessage := statusMessage . " ."
-            ToolTip statusMessage
             return
         }
-        ToolTip()
         if (req.status == 200) { ; OK.
             data := req.responseText
             ;MsgBox data
@@ -232,55 +244,64 @@ CallAPI(mode, promptName, prompt, input, promptEnd) {
 
 HandleResponse(data, mode, promptName, input) {
 
-    ;MsgBox data
+    try {
 
-    var := Jxon_Load(&data)
+        ;MsgBox data
 
-    if (mode == "mode_chat_completion") {
-        text := var.Get("choices")[1].Get("message").Get("content")
-    } else {
-        text := var.Get("choices")[1].Get("text")
-    }
+        var := Jxon_Load(&data)
 
-    if text == "" {
-        MsgBox "No text was generated. Consider modifying your input."
-        return
-    }
-
-    ;; Clean up response text
-    text := StrReplace(text, '`r', "") ; remove carriage returns
-
-    append := GetSetting(promptName, "append")
-    if StrLower(append) == "true" {
-        text := input . text
-    } else {
-        ;# Remove leading newlines
-        while SubStr(text, 1, 1) == '`n' {
-            text := SubStr(text, 2)
+        if (mode == "mode_chat_completion") {
+            text := var.Get("choices")[1].Get("message").Get("content")
+        } else {
+            text := var.Get("choices")[1].Get("text")
         }
-        text := Trim(text)
-        ;# Remove enclosing quotes
-        if SubStr(text, 1, 1) == '"' and SubStr(text, -1) == '"' {
-            text := SubStr(text, 2, -1)
+
+        if text == "" {
+            MsgBox "No text was generated. Consider modifying your input."
+            return
         }
+
+        ;; Clean up response text
+        text := StrReplace(text, '`r', "") ; remove carriage returns
+        replaceSelected := GetSetting(promptName, "replace_selected")
+
+        if StrLower(replaceSelected) == "false" {
+            responseSeperator := GetSetting(promptName, "response_seperator", "")
+            text := input . responseSeperator . text
+        } else {
+            ;# Remove leading newlines
+            while SubStr(text, 1, 1) == '`n' {
+                text := SubStr(text, 2)
+            }
+            text := Trim(text)
+            ;# Remove enclosing quotes
+            if SubStr(text, 1, 1) == '"' and SubStr(text, -1) == '"' {
+                text := SubStr(text, 2, -1)
+            }
+        }
+
+        if displayResponse {
+            MyGui := Gui(, "Response")
+            MyGui.SetFont("s14")
+            MyGui.Opt("+AlwaysOnTop +Owner +Resize")  ; +Owner avoids a taskbar button.
+            MyGui.Add("Edit", "r20 vMyEdit w600 Wrap", text)
+            MyGui.Add("Button", , "Close").OnEvent("Click", (*) => WinClose())
+            MyGui.Show("NoActivate")
+        } else {
+            WinActivate activeWin
+            A_Clipboard := text
+            send "^v"
+        }
+
+        Sleep 500
+        A_Clipboard := oldClipboard
+
+    } catch as err {
+        MsgBox Format("{1}: {2}.`n`nFile:`t{3}`nLine:`t{4}`nWhat:`t{5}", type(err), err.Message, err.File, err.Line, err.What), , 16
+    } finally {
+        global isRunning := false 
+        RestoreCursor()
     }
-
-    if displayResponse {
-        MyGui := Gui(, "Response")
-        MyGui.SetFont("s14")
-        MyGui.Opt("+AlwaysOnTop +Owner +Resize")  ; +Owner avoids a taskbar button.
-        MyGui.Add("Edit", "r20 vMyEdit w600 Wrap", text)
-        MyGui.Add("Button", , "Close").OnEvent("Click", (*) => WinClose())
-        MyGui.Show("NoActivate")
-    } else {
-        WinActivate activeWin
-        A_Clipboard := text
-        send "^v"
-    }
-
-    Sleep 500
-    A_Clipboard := oldClipboard
-
 }
 
 InitPopupMenu() {
@@ -355,5 +376,26 @@ StartWithWindowsAction(*) {
         fileCreateShortcut(a_scriptFullPath, sww_shortcut)
         tray.Check("Start with Windows")
         trayTip("Start With Windows", "Shortcut created", 5)
+    }
+}
+
+Unescape(obj) {
+    ;obj := StrReplace(obj,"\\","\")
+    obj := StrReplace(obj, "\t", "`t")
+    obj := StrReplace(obj, "\r", "`r")
+    obj := StrReplace(obj, "\n", "`n")
+    obj := StrReplace(obj, "\b", "`b")
+    obj := StrReplace(obj, "\f", "`f")
+    ;obj := StrReplace(obj,"\/","/")
+    ;obj := StrReplace(obj,'\"','"')
+    return obj
+}
+
+ShowWaitTooltip() {
+    if (isRunning) {
+        ToolTip "    Generating response..."
+        SetTimer () => ShowWaitTooltip(), -250
+    } else {
+        ToolTip()
     }
 }

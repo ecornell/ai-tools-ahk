@@ -48,6 +48,7 @@ jobs:
           $cwd = (Get-Item .).FullName;
           Remove-Item "$cwd\_autohotkey" -Recurse
           Remove-Item  "$cwd\.github" -Recurse
+          Remove-Item  "$cwd\.gitignore"
           $compress = @{
             Path = "$cwd\*.*"
             CompressionLevel = "Fastest"

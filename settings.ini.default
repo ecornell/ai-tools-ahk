@@ -1,26 +1,30 @@
-#------------------------------------------------------------------------------
-# Settings 
-#------------------------------------------------------------------------------
+;------------------------------------------------------------------------------
+; Settings 
+;------------------------------------------------------------------------------
 [settings]
 default_mode=mode_chat_completion
 default_api_key=
 
-#------------------------------------------------------------------------------
-# Hotkeys  
-# ^ = Ctrl, ! = Alt, + = Shift, # = Win 
-# See: (https://autohotkey.com/docs/Hotkeys.htm) 
-#------------------------------------------------------------------------------
+;------------------------------------------------------------------------------
+; Hotkeys  
+;---------
+; ^ = Ctrl, ! = Alt, + = Shift, # = Win 
+; See: (https://autohotkey.com/docs/Hotkeys.htm) 
+;------------------------------------------------------------------------------
 hotkey_1     = ^+j
 hotkey_1_prompt = prompt_spelling_chat_completion
 hotkey_2     = ^+k   
 menu_hotkey  = ^!+k  
 
-#------------------------------------------------------------------------------
-# Popup menu
-# first 10 items are 1-0, then a-z, unless menu_text contains a & character to 
-# indicate a hotkey
-# - = separator
-#------------------------------------------------------------------------------
+;------------------------------------------------------------------------------
+; Popup Menu
+;------------
+; Prompts to display in listed order the popup menu  
+; Values are the prompt name (see prompts section)
+; First 10 items are 1-0, then a-z, unless menu_text contains a & character to 
+; indicate a hotkey
+; - = separator
+;------------------------------------------------------------------------------
 [popup_menu]
 prompt_spelling_chat_completion
 prompt_writting
@@ -29,15 +33,24 @@ prompt_longer
 prompt_tone_professional
 prompt_simplify
 -
+prompt_proof_chat_completion
 prompt_summarize
 prompt_explain
 prompt_items
 -
 prompt_continue
 
-#------------------------------------------------------------------------------
-# Prompts
-#------------------------------------------------------------------------------
+;------------------------------------------------------------------------------
+; Prompts
+;---------
+; prompt: The main prompt to prepend before to the user input
+; menu_text: The text to be displayed in the popup menu
+; mode: The mode to be used for the prompt - see modes section
+; prompt_system: The system prompt send of system input for chat completion mode
+; prompt_end: Text to append to the end of user input
+; append: If true, the response will be appended to the user input
+; ~mode overrides~: Any mode setting can be overriden for a specific prompt
+;------------------------------------------------------------------------------
 [prompt_writting]
 prompt="Improve the writting for clarity and conciseness and correct the spelling (American English) and grammar of the following:\n\n"
 prompt_end="###"
@@ -89,14 +102,23 @@ prompt="Summarize as a statement and identify any action items as a bullet list:
 prompt_end="###"
 menu_text="Find action items"
 
+[prompt_proof_chat_completion]
+prompt_system="I want you act as a English proofreader. I will provide you texts and I would like you to review them for any spelling, grammar, or punctuation errors. Once you have finished reviewing the text, provide me with a very detailed bullet list of suggestions and modifications to make and reasons why."
+prompt="My text is the following: "
+prompt_end=""
+menu_text="Proofread"
+append=True
+append_with="\n\n"
+temperature=0
+
 [prompt_continue]
 prompt=""
 append=True
 menu_text="& Space - Continue writting"
 
-#------------------------------------------------------------------------------
-# Modes
-#------------------------------------------------------------------------------
+;------------------------------------------------------------------------------
+; Modes
+;------------------------------------------------------------------------------
 [mode_edit]
 endpoint=https://api.openai.com/v1/edits
 model="text-davinci-edit-001"

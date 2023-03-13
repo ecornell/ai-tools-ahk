@@ -17,7 +17,7 @@ hotkey_2     = ^+k
 menu_hotkey  = ^!+k  
 
 ;- Misc
-cursor_wait_animation_file=wait-1.ani
+; cursor_wait_animation_file=wait-1.ani
 
 ;------------------------------------------------------------------------------
 ; Popup Menu
@@ -46,13 +46,23 @@ prompt_continue
 ;------------------------------------------------------------------------------
 ; Prompts
 ;---------
-; prompt: The main prompt to prepend before to the user input
-; menu_text: The text to be displayed in the popup menu
-; mode: The mode to be used for the prompt - see modes section
-; prompt_system: The system prompt send of system input for chat completion mode
-; prompt_end: Text to append to the end of user input
-; append: If true, the response will be appended to the user input
-; ~mode overrides~: Any mode setting can be overriden for a specific prompt
+; prompt             : (Required) The main prompt to prepend before to 
+;                       the user input
+; mode               : (Required) The mode to be used for the prompt 
+;                       - see modes section
+; menu_text          : (Optional) The text to be displayed in the popup  menu
+; prompt_system      : (Optional) The system prompt send of system input 
+;                       for chat completion mode
+; prompt_end         : (Optional) Text to append to the end of user input
+; replace_selected   : (Optional:True/False:Defult True) If true, the response 
+;                       will be appended to the user input
+; response_seperator : (Optional:Default "") The text to append between 
+;                       the user input and the response
+; ~mode overrides~   : (Optional) Any mode setting can be overriden for a 
+;                        specific prompt
+; --
+;  Note: String values must be enclosed in double quotes and can use \n for 
+;        new lines
 ;------------------------------------------------------------------------------
 [prompt_writting]
 prompt="Improve the writting for clarity and conciseness and correct the spelling (American English) and grammar of the following:\n\n"

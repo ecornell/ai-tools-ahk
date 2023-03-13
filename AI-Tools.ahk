@@ -72,7 +72,7 @@ PromptHandler(promptName, append := false) {
 
         global isRunning := true 
         ShowWaitTooltip()
-        SetSystemCursor(GetSetting("settings", "cursor_wait_animation_file","wait-1.ani"))
+        SetSystemCursor(GetSetting("settings", "cursor_wait_animation_file","wait"))
 
         prompt := GetSetting(promptName, "prompt")
         promptEnd := GetSetting(promptName, "prompt_end")
@@ -393,8 +393,8 @@ Unescape(obj) {
 
 ShowWaitTooltip() {
     if (isRunning) {
-        ToolTip "    Generating response..."
-        SetTimer () => ShowWaitTooltip(), -250
+        ToolTip "Generating response..."
+        SetTimer () => ShowWaitTooltip(), -50
     } else {
         ToolTip()
     }

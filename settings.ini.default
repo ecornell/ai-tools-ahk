@@ -16,6 +16,9 @@ hotkey_1_prompt = prompt_spelling_chat_completion
 hotkey_2     = ^+k   
 menu_hotkey  = ^!+k  
 
+;- Misc
+cursor_wait_animation_file=wait-1.ani
+
 ;------------------------------------------------------------------------------
 ; Popup Menu
 ;------------

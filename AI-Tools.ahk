@@ -99,7 +99,7 @@ SelectText() {
     } else if WinActive("ahk_exe notepad++.exe") or
         WinActive("ahk_exe Code.exe") {
         ; In Notepad++ select the current line
-        Send "{End}+{Home}+{Home}"
+        Send "{End}{End}+{Home}+{Home}"
     } else {
         Send "^a"
     }

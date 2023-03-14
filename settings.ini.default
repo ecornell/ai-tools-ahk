@@ -64,14 +64,6 @@ prompt_continue
 ;  Note: String values must be enclosed in double quotes and can use \n for 
 ;        new lines
 ;------------------------------------------------------------------------------
-[prompt_writting]
-prompt="Improve the writting for clarity and conciseness and correct the spelling (American English) and grammar of the following:\n\n"
-prompt_end="###"
-menu_text="Rewrite for clarity"
-
-[prompt_writting_edit]
-prompt="Fix the spelling (American English) and grammar"
-mode=mode_edit
 
 [prompt_spelling_chat_completion]
 prompt_system="I want you to act as an English spelling corrector and grammar improver. I want you to only reply the correction, the improvements and nothing else, do not write explanations."
@@ -80,48 +72,53 @@ prompt_end="\nOutput: "
 menu_text="Fix spelling && grammar"
 temperature=0
 
+[prompt_writting]
+prompt="Improve the writting for clarity and conciseness and correct the spelling (American English) and grammar of the following:\n\n"
+menu_text="Rewrite for clarity"
+
 [prompt_shorter]
 prompt="Make the following shorter:\n\n"
-prompt_end="###"
 menu_text="Make shorter"
 
 [prompt_longer]
 prompt="Make the following longer:\n\n"
-prompt_end="###"
 menu_text="Make longer"
 
 [prompt_tone_professional]
 prompt="Make the following more professional:\n\n"
-prompt_end="###"
 menu_text="Change Tone - Professional"
 
 [prompt_simplify]
 prompt="Simplify the following:\n\n"
-prompt_end="###"
 menu_text="Simplify language"
-
-[prompt_summarize]
-prompt="Summarize the following:\n\n"
-prompt_end="###"
-menu_text="Summarize"
-
-[prompt_explain]
-prompt="Explain the following:\n\n"
-prompt_end="###"
-menu_text="Explain this"
-
-[prompt_items]
-prompt="Summarize as a statement and identify any action items as a bullet list:\n\n"
-prompt_end="###"
-menu_text="Find action items"
 
 [prompt_proof_chat_completion]
 prompt_system="I want you act as a English proofreader. I will provide you texts and I would like you to review them for any spelling, grammar, or punctuation errors. Once you have finished reviewing the text, provide me with a very detailed bullet list of suggestions and modifications to make and reasons why."
 prompt="My text is the following: "
-prompt_end=""
 menu_text="Proofread"
 replace_selected=False
 response_seperator="\n\n"
+temperature=0
+
+[prompt_summarize]
+prompt="Summarize the following:\n\n"
+menu_text="Summarize"
+replace_selected=False
+response_seperator="\n"
+temperature=0
+
+[prompt_explain]
+prompt="Explain the following:\n\n"
+menu_text="Explain this"
+replace_selected=False
+response_seperator="\n"
+temperature=0
+
+[prompt_items]
+prompt="Summarize as a statement and identify any action items as a bullet list:\n\n"
+menu_text="Find action items"
+replace_selected=False
+response_seperator="\n"
 temperature=0
 
 [prompt_continue]

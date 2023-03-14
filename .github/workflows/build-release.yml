@@ -20,10 +20,6 @@ jobs:
           Expand-Archive -Path "$cwd\ahk-v2.zip" -DestinationPath "$cwd\_autohotkey\" -Force;
           Remove-Item -Path "$cwd\ahk-v2.zip" -Force
 
-          Invoke-WebRequest "https://www.autohotkey.com/mpress/mpress.219.zip" -OutFile "$cwd\mpress.zip";
-          Expand-Archive -Path "$cwd\mpress.zip" -DestinationPath "$cwd\_autohotkey\Compiler" -Force;
-          Remove-Item -Path "$cwd\mpress.zip" -Force
-
           Invoke-WebRequest "https://github.com/AutoHotkey/Ahk2Exe/releases/download/Ahk2Exe1.1.36.02e1/Ahk2Exe1.1.36.02e.zip" -OutFile "$cwd\Ahk2Exe.zip";
           Expand-Archive -Path "$cwd\Ahk2Exe.zip" -DestinationPath "$cwd\_autohotkey\Compiler" -Force;
           Remove-Item -Path "$cwd\Ahk2Exe.zip" -Force
@@ -38,7 +34,6 @@ jobs:
           $command += '/in "$cwd\AI-Tools.ahk" '
           $command += '/out "$cwd\AI-Tools.exe" '
           $command += '/icon "$cwd\icon.ico" '
-          $command += '/compress 1 '
           $command += '/base "$cwd\_autohotkey\AutoHotkey64.exe" '
           Invoke-Expression $command
 

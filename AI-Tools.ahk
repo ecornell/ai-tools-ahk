@@ -96,7 +96,8 @@ SelectText() {
         WinActive("ahk_exe OUTLOOK.EXE") {
         ; In Word/Outlook select the current paragraph
         Send "^{Up}^+{Down}+{Left}" ; Move to para start, select para, move left to not include para end
-    } else if WinActive("ahk_exe notepad++.exe") {
+    } else if WinActive("ahk_exe notepad++.exe") or
+        WinActive("ahk_exe Code.exe") {
         ; In Notepad++ select the current line
         Send "{End}+{Home}+{Home}"
     } else {

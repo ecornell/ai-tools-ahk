@@ -17,7 +17,7 @@ hotkey_2     = ^+k
 menu_hotkey  = ^!+k  
 
 ;- Misc
-; cursor_wait_animation_file=wait-1.ani
+;cursor_wait_animation_file=wait-1.ani
 
 ;------------------------------------------------------------------------------
 ; Popup Menu
@@ -120,14 +120,15 @@ prompt_system="I want you act as a English proofreader. I will provide you texts
 prompt="My text is the following: "
 prompt_end=""
 menu_text="Proofread"
-append=True
-append_with="\n\n"
+replace_selected=False
+response_seperator="\n\n"
 temperature=0
 
 [prompt_continue]
 prompt=""
-append=True
+replace_selected=False
 menu_text="& Space - Continue writting"
+response_seperator=" "
 
 ;------------------------------------------------------------------------------
 ; Modes

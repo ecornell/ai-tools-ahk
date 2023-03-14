@@ -1,6 +1,6 @@
 # AI-Tools-AHK
 
-<!-- <a href="url"><img src="http://i.imgur.com/xlONmxY.gif"></a><br></br> -->
+<a href="url"><img src="./res/AI-Tool-AHK.gif"></a><br></br>
 
 ### Table of Contents
 

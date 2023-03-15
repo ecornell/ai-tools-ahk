@@ -21,68 +21,76 @@ if not (FileExist("settings.ini")) {
     IniWrite(api_key, ".\settings.ini", "settings", "default_api_key")
 }
 
+
 ;#
-debug := false
-settings_cache := Map()
-isRunning := false
+_debug := false
+_lastModified := fileGetTime("./settings.ini")
+_settingsCache := Map()
 
-displayResponse := false
-activeWin := ""
-oldClipboard := ""
+_displayResponse := false
+_activeWin := ""
+_oldClipboard := ""
 
-defaultMode := GetSetting("settings", "default_mode")
-defaultApiKey := GetSetting("settings", "default_api_key")
+_defaultMode := GetSetting("settings", "default_mode")
+_defaultApiKey := GetSetting("settings", "default_api_key")
 
-hotkey1 := GetSetting("settings", "hotkey_1")
-hotkey1_prompt := GetSetting("settings", "hotkey_1_prompt")
-hotkey2 := GetSetting("settings", "hotkey_2")
-menu_hotkey := GetSetting("settings", "menu_hotkey")
+_hotkey1 := GetSetting("settings", "hotkey_1")
+_hotkey1_prompt := GetSetting("settings", "hotkey_1_prompt")
+_hotkey2 := GetSetting("settings", "hotkey_2")
+_menu_hotkey := GetSetting("settings", "menu_hotkey")
+
+;#
+CheckSettings() 
 
 ;# menu
 InitPopupMenu()
 
-;#
-
-tray := A_TrayMenu
-tray.add
-tray.add "Github readme", OpenGithub
+;# Tray
+_tray := A_TrayMenu
+_tray.add
+_tray.add "Open settings", OpenSettings
+_tray.add "Reload settings", ReloadSettings
+_tray.add
+_tray.add "Github readme", OpenGithub
 StartWithWindows()
 
 ;#
 
-HotKey hotkey1, (*) => (
+HotKey _hotkey1, (*) => (
     SelectText()
-    PromptHandler(hotkey1_prompt))
+    PromptHandler(_hotkey1_prompt))
 
-HotKey hotkey2, (*) => (
+HotKey _hotkey2, (*) => (
     SelectText()
     ShowPopupMenu())
 
-HotKey menu_hotkey, (*) => (
+HotKey _menu_hotkey, (*) => (
     ShowPopupMenu())
 
 ;###
 
 ShowPopupMenu() {
-    iMenu.Show()
+    _iMenu.Show()
 }
 
 PromptHandler(promptName, append := false) {
     try {
 
-        global isRunning := true 
+        global _running := true 
+        global _startTime := A_TickCount
+
         ShowWaitTooltip()
         SetSystemCursor(GetSetting("settings", "cursor_wait_animation_file","wait"))
 
         prompt := GetSetting(promptName, "prompt")
         promptEnd := GetSetting(promptName, "prompt_end")
-        mode := GetSetting(promptName, "mode", defaultMode)
+        mode := GetSetting(promptName, "mode", _defaultMode)
         input := GetTextFromClip()
 
         CallAPI(mode, promptName, prompt, input, promptEnd)
 
     } catch as err {
-        global isRunning := false 
+        global _running := false 
         RestoreCursor()
         MsgBox Format("{1}: {2}.`n`nFile:`t{3}`nLine:`t{4}`nWhat:`t{5}", type(err), err.Message, err.File, err.Line, err.What), , 16
         ;throw err
@@ -108,8 +116,8 @@ SelectText() {
 
 GetTextFromClip() {
 
-    global activeWin := WinGetTitle("A")
-    global oldClipboard := A_Clipboard
+    global _activeWin := WinGetTitle("A")
+    global _oldClipboard := A_Clipboard
 
     A_Clipboard := ""
     Send "^c"
@@ -127,9 +135,9 @@ GetTextFromClip() {
 
 
 GetSetting(section, key, defaultValue := "") {
-    global settings_cache
-    if (settings_cache.Has(section . key . defaultValue)) {
-        return settings_cache.Get(section . key . defaultValue)
+    global _settingsCache
+    if (_settingsCache.Has(section . key . defaultValue)) {
+        return _settingsCache.Get(section . key . defaultValue)
     } else {
         value := IniRead(".\settings.ini", section, key, defaultValue)
         if IsNumber(value) {
@@ -137,7 +145,7 @@ GetSetting(section, key, defaultValue := "") {
         } else {
             value := Unescape(value)
         }
-        settings_cache.Set(section . key . defaultValue, value)
+        _settingsCache.Set(section . key . defaultValue, value)
         return value
     }
 }
@@ -209,7 +217,7 @@ CallAPI(mode, promptName, prompt, input, promptEnd) {
 
     body := GetBody(mode, promptName, prompt, input, promptEnd)
     endpoint := GetSetting(mode, "endpoint")
-    apiKey := GetSetting(mode, "api_key", defaultApiKey)
+    apiKey := GetSetting(mode, "api_key", _defaultApiKey)
 
     req := ComObject("Msxml2.XMLHTTP")
     req.open("POST", endpoint, true)
@@ -221,7 +229,7 @@ CallAPI(mode, promptName, prompt, input, promptEnd) {
 
     bodyJson := Jxon_dump(body, 4)
 
-    if debug {
+    if _debug {
         MsgBox bodyJson
     }
 
@@ -281,7 +289,7 @@ HandleResponse(data, mode, promptName, input) {
             }
         }
 
-        if displayResponse {
+        if _displayResponse {
             MyGui := Gui(, "Response")
             MyGui.SetFont("s14")
             MyGui.Opt("+AlwaysOnTop +Owner +Resize")  ; +Owner avoids a taskbar button.
@@ -289,28 +297,29 @@ HandleResponse(data, mode, promptName, input) {
             MyGui.Add("Button", , "Close").OnEvent("Click", (*) => WinClose())
             MyGui.Show("NoActivate")
         } else {
-            WinActivate activeWin
+            WinActivate _activeWin
             A_Clipboard := text
             send "^v"
         }
 
+        global _running := false 
         Sleep 500
-        A_Clipboard := oldClipboard
+        A_Clipboard := _oldClipboard
 
     } catch as err {
         MsgBox Format("{1}: {2}.`n`nFile:`t{3}`nLine:`t{4}`nWhat:`t{5}", type(err), err.Message, err.File, err.Line, err.What), , 16
     } finally {
-        global isRunning := false 
+        global _running := false 
         RestoreCursor()
     }
 }
 
 InitPopupMenu() {
-    global iMenu := Menu()
+    global _iMenu := Menu()
     iMenuItemParms := Map()
 
-    iMenu.add "&`` - Display response in new window", NewWindowCheckHandler
-    iMenu.Add  ; Add a separator line.
+    _iMenu.add "&`` - Display response in new window", NewWindowCheckHandler
+    _iMenu.Add  ; Add a separator line.
 
     menu_items := IniRead("./settings.ini", "popup_menu")
 
@@ -319,7 +328,7 @@ InitPopupMenu() {
         v_promptName := A_LoopField
         if (v_promptName != "" and SubStr(v_promptName, 1, 1) != "#") {
             if (v_promptName = "-") {
-                iMenu.Add  ; Add a separator line.
+                _iMenu.Add  ; Add a separator line.
             } else {
                 menu_text := GetSetting(v_promptName, "menu_text", v_promptName)
                 if (RegExMatch(menu_text, "^(?!.*&&).*&.*$") == 0) {
@@ -332,8 +341,8 @@ InitPopupMenu() {
                     menu_text := keyboard_shortcut menu_text
                 }
 
-                iMenu.Add menu_text, MenuHandler
-                item_count := DllCall("GetMenuItemCount", "ptr", iMenu.Handle)
+                _iMenu.Add menu_text, MenuHandler
+                item_count := DllCall("GetMenuItemCount", "ptr", _iMenu.Handle)
                 iMenuItemParms[item_count] := v_promptName
             }
         }
@@ -342,9 +351,9 @@ InitPopupMenu() {
         PromptHandler(iMenuItemParms[ItemPos])
     }
     NewWindowCheckHandler(*) {
-        iMenu.ToggleCheck "&`` - Display response in new window"
-        global displayResponse := !displayResponse
-        iMenu.Show()
+        _iMenu.ToggleCheck "&`` - Display response in new window"
+        global _displayResponse := !_displayResponse
+        _iMenu.Show()
     }
 }
 
@@ -353,31 +362,41 @@ OpenGithub(*) {
 }
 
 StartWithWindows() {
-    global sww_shortcut
-    tray.add "Start with Windows", StartWithWindowsAction
+    global _sww_shortcut
+    _tray.add "Start with Windows", StartWithWindowsAction
     SplitPath a_scriptFullPath, , , , &script_name
-    sww_shortcut := a_startup "\" script_name ".lnk"
-    if FileExist(sww_shortcut) {
-        fileGetShortcut sww_shortcut, &target  ;# update if script has moved
+    _sww_shortcut := a_startup "\" script_name ".lnk"
+    if FileExist(_sww_shortcut) {
+        fileGetShortcut _sww_shortcut, &target  ;# update if script has moved
         if (target != a_scriptFullPath) {
-            fileCreateShortcut a_scriptFullPath, sww_shortcut
+            fileCreateShortcut a_scriptFullPath, _sww_shortcut
         }
-        tray.Check("Start with Windows")
+        _tray.Check("Start with Windows")
     } else {
-        tray.Uncheck("Start with Windows")
+        _tray.Uncheck("Start with Windows")
     }
 }
 
 StartWithWindowsAction(*) {
-    if FileExist(sww_shortcut) {
-        fileDelete(sww_shortcut)
-        tray.Uncheck("Start with Windows")
+    if FileExist(_sww_shortcut) {
+        fileDelete(_sww_shortcut)
+        _tray.Uncheck("Start with Windows")
         trayTip("Start With Windows", "Shortcut removed", 5)
     } else {
-        fileCreateShortcut(a_scriptFullPath, sww_shortcut)
-        tray.Check("Start with Windows")
+        fileCreateShortcut(a_scriptFullPath, _sww_shortcut)
+        _tray.Check("Start with Windows")
         trayTip("Start With Windows", "Shortcut created", 5)
     }
+}
+
+OpenSettings(*) {
+    Run A_ScriptDir . "\settings.ini"
+}
+
+ReloadSettings(*) {
+    TrayTip("Reload Settings", "Reloading settings...", 5)
+    _settingsCache.Clear()
+    InitPopupMenu()
 }
 
 Unescape(obj) {
@@ -393,10 +412,25 @@ Unescape(obj) {
 }
 
 ShowWaitTooltip() {
-    if (isRunning) {
-        ToolTip "Generating response..."
-        SetTimer () => ShowWaitTooltip(), -50
+    if (_running) {
+        elapsedTime := (A_TickCount - _startTime) / 1000
+        ToolTip "Generating response... " Format("{:0.2f}", elapsedTime) "s"
+        SetTimer () => ShowWaitTooltip(), -25
     } else {
         ToolTip()
     }
 }
+
+CheckSettings() {
+    if (FileExist("./settings.ini")) {
+        lastModified := fileGetTime("./settings.ini")
+        if (lastModified !=  _lastModified) {
+            global _lastModified := lastModified
+            TrayTip("Settings Updated", "Restarting...", 5)            
+            Sleep 1500
+            Reload
+        }
+        SetTimer () => CheckSettings(), -5000   ; Check every 5 seconds
+    }    
+}
+

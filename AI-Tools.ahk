@@ -22,49 +22,32 @@ if not (FileExist("settings.ini")) {
 }
 
 
-;#
-_debug := false
-_lastModified := fileGetTime("./settings.ini")
+;# globals 
 _settingsCache := Map()
-
+_lastModified := fileGetTime("./settings.ini")
 _displayResponse := false
 _activeWin := ""
 _oldClipboard := ""
-
-_defaultMode := GetSetting("settings", "default_mode")
-_defaultApiKey := GetSetting("settings", "default_api_key")
-
-_hotkey1 := GetSetting("settings", "hotkey_1")
-_hotkey1_prompt := GetSetting("settings", "hotkey_1_prompt")
-_hotkey2 := GetSetting("settings", "hotkey_2")
-_menu_hotkey := GetSetting("settings", "menu_hotkey")
+_debug := GetSetting("settings", "debug", false)
 
 ;#
-CheckSettings() 
+CheckSettings()
 
 ;# menu
 InitPopupMenu()
+InitTrayMenu()
 
-;# Tray
-_tray := A_TrayMenu
-_tray.add
-_tray.add "Open settings", OpenSettings
-_tray.add "Reload settings", ReloadSettings
-_tray.add
-_tray.add "Github readme", OpenGithub
-StartWithWindows()
+;# hotkeys
 
-;#
-
-HotKey _hotkey1, (*) => (
+HotKey GetSetting("settings", "hotkey_1"), (*) => (
     SelectText()
-    PromptHandler(_hotkey1_prompt))
+    PromptHandler(GetSetting("settings", "hotkey_1_prompt")))
 
-HotKey _hotkey2, (*) => (
+HotKey GetSetting("settings", "hotkey_2"), (*) => (
     SelectText()
     ShowPopupMenu())
 
-HotKey _menu_hotkey, (*) => (
+HotKey GetSetting("settings", "menu_hotkey"), (*) => (
     ShowPopupMenu())
 
 ;###
@@ -76,21 +59,21 @@ ShowPopupMenu() {
 PromptHandler(promptName, append := false) {
     try {
 
-        global _running := true 
+        global _running := true
         global _startTime := A_TickCount
 
         ShowWaitTooltip()
-        SetSystemCursor(GetSetting("settings", "cursor_wait_animation_file","wait"))
+        SetSystemCursor(GetSetting("settings", "cursor_wait_animation_file", "wait"))
 
         prompt := GetSetting(promptName, "prompt")
         promptEnd := GetSetting(promptName, "prompt_end")
-        mode := GetSetting(promptName, "mode", _defaultMode)
+        mode := GetSetting(promptName, "mode", GetSetting("settings", "default_mode"))
         input := GetTextFromClip()
 
         CallAPI(mode, promptName, prompt, input, promptEnd)
 
     } catch as err {
-        global _running := false 
+        global _running := false
         RestoreCursor()
         MsgBox Format("{1}: {2}.`n`nFile:`t{3}`nLine:`t{4}`nWhat:`t{5}", type(err), err.Message, err.File, err.Line, err.What), , 16
         ;throw err
@@ -217,7 +200,7 @@ CallAPI(mode, promptName, prompt, input, promptEnd) {
 
     body := GetBody(mode, promptName, prompt, input, promptEnd)
     endpoint := GetSetting(mode, "endpoint")
-    apiKey := GetSetting(mode, "api_key", _defaultApiKey)
+    apiKey := GetSetting(mode, "api_key", GetSetting("settings", "default_api_key"))
 
     req := ComObject("Msxml2.XMLHTTP")
     req.open("POST", endpoint, true)
@@ -229,9 +212,7 @@ CallAPI(mode, promptName, prompt, input, promptEnd) {
 
     bodyJson := Jxon_dump(body, 4)
 
-    if _debug {
-        MsgBox bodyJson
-    }
+    LogDebug "bodyJson ->`n" bodyJson
 
     req.send(bodyJson)
 
@@ -255,7 +236,7 @@ HandleResponse(data, mode, promptName, input) {
 
     try {
 
-        ;MsgBox data
+        LogDebug "data ->`n" data
 
         var := Jxon_Load(&data)
 
@@ -302,14 +283,14 @@ HandleResponse(data, mode, promptName, input) {
             send "^v"
         }
 
-        global _running := false 
+        global _running := false
         Sleep 500
         A_Clipboard := _oldClipboard
 
     } catch as err {
         MsgBox Format("{1}: {2}.`n`nFile:`t{3}`nLine:`t{4}`nWhat:`t{5}", type(err), err.Message, err.File, err.Line, err.What), , 16
     } finally {
-        global _running := false 
+        global _running := false
         RestoreCursor()
     }
 }
@@ -357,13 +338,19 @@ InitPopupMenu() {
     }
 }
 
-OpenGithub(*) {
-    Run "https://github.com/ecornell/ai-tools-ahk#usage"
+InitTrayMenu() {
+    tray := A_TrayMenu
+    tray.add
+    tray.add "Open settings", OpenSettings
+    tray.add "Reload settings", ReloadSettings
+    tray.add
+    tray.add "Github readme", OpenGithub
+    TrayAddStartWithWindows(tray)
+
 }
 
-StartWithWindows() {
-    global _sww_shortcut
-    _tray.add "Start with Windows", StartWithWindowsAction
+TrayAddStartWithWindows(tray) {
+    tray.add "Start with Windows", StartWithWindowsAction
     SplitPath a_scriptFullPath, , , , &script_name
     _sww_shortcut := a_startup "\" script_name ".lnk"
     if FileExist(_sww_shortcut) {
@@ -371,22 +358,25 @@ StartWithWindows() {
         if (target != a_scriptFullPath) {
             fileCreateShortcut a_scriptFullPath, _sww_shortcut
         }
-        _tray.Check("Start with Windows")
+        tray.Check("Start with Windows")
     } else {
-        _tray.Uncheck("Start with Windows")
+        tray.Uncheck("Start with Windows")
+    }
+    StartWithWindowsAction(*) {
+        if FileExist(_sww_shortcut) {
+            fileDelete(_sww_shortcut)
+            tray.Uncheck("Start with Windows")
+            trayTip("Start With Windows", "Shortcut removed", 5)
+        } else {
+            fileCreateShortcut(a_scriptFullPath, _sww_shortcut)
+            tray.Check("Start with Windows")
+            trayTip("Start With Windows", "Shortcut created", 5)
+        }
     }
 }
 
-StartWithWindowsAction(*) {
-    if FileExist(_sww_shortcut) {
-        fileDelete(_sww_shortcut)
-        _tray.Uncheck("Start with Windows")
-        trayTip("Start With Windows", "Shortcut removed", 5)
-    } else {
-        fileCreateShortcut(a_scriptFullPath, _sww_shortcut)
-        _tray.Check("Start with Windows")
-        trayTip("Start With Windows", "Shortcut created", 5)
-    }
+OpenGithub(*) {
+    Run "https://github.com/ecornell/ai-tools-ahk#usage"
 }
 
 OpenSettings(*) {
@@ -400,16 +390,14 @@ ReloadSettings(*) {
 }
 
 Unescape(obj) {
-    ;obj := StrReplace(obj,"\\","\")
     obj := StrReplace(obj, "\t", "`t")
     obj := StrReplace(obj, "\r", "`r")
     obj := StrReplace(obj, "\n", "`n")
     obj := StrReplace(obj, "\b", "`b")
     obj := StrReplace(obj, "\f", "`f")
-    ;obj := StrReplace(obj,"\/","/")
-    ;obj := StrReplace(obj,'\"','"')
     return obj
-}
+}  
+
 
 ShowWaitTooltip() {
     if (_running) {
@@ -424,13 +412,20 @@ ShowWaitTooltip() {
 CheckSettings() {
     if (FileExist("./settings.ini")) {
         lastModified := fileGetTime("./settings.ini")
-        if (lastModified !=  _lastModified) {
+        if (lastModified != _lastModified) {
             global _lastModified := lastModified
-            TrayTip("Settings Updated", "Restarting...", 5)            
+            TrayTip("Settings Updated", "Restarting...", 5)
             Sleep 1500
             Reload
         }
         SetTimer () => CheckSettings(), -5000   ; Check every 5 seconds
-    }    
+    }
 }
 
+LogDebug(msg) {
+    if (_debug != false) {
+        now := FormatTime(A_Now, "yyyy-MM-dd HH:mm:ss")        
+        logMsg := "[" . now . "] " . msg . "`n"
+        FileAppend(logMsg, "./debug.log")
+    }
+}

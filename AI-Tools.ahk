@@ -20,15 +20,17 @@ if not (FileExist("settings.ini")) {
     FileCopy("settings.ini.default", "settings.ini")
     IniWrite(api_key, ".\settings.ini", "settings", "default_api_key")
 }
+RestoreCursor()
 
 
-;# globals 
+;# globals
 _settingsCache := Map()
 _lastModified := fileGetTime("./settings.ini")
 _displayResponse := false
 _activeWin := ""
 _oldClipboard := ""
 _debug := GetSetting("settings", "debug", false)
+_reload_on_change := GetSetting("settings", "reload_on_change", false)
 
 ;#
 CheckSettings()
@@ -63,7 +65,7 @@ PromptHandler(promptName, append := false) {
         global _startTime := A_TickCount
 
         ShowWaitTooltip()
-        SetSystemCursor(GetSetting("settings", "cursor_wait_animation_file", "wait"))
+        SetSystemCursor(GetSetting("settings", "cursor_wait_file", "wait"))
 
         prompt := GetSetting(promptName, "prompt")
         promptEnd := GetSetting(promptName, "prompt_end")
@@ -126,7 +128,7 @@ GetSetting(section, key, defaultValue := "") {
         if IsNumber(value) {
             value := Number(value)
         } else {
-            value := Unescape(value)
+            value := UnescapeSetting(value)
         }
         _settingsCache.Set(section . key . defaultValue, value)
         return value
@@ -202,33 +204,25 @@ CallAPI(mode, promptName, prompt, input, promptEnd) {
     endpoint := GetSetting(mode, "endpoint")
     apiKey := GetSetting(mode, "api_key", GetSetting("settings", "default_api_key"))
 
-    req := ComObject("Msxml2.XMLHTTP")
+    req := ComObject("WinHttp.WinHttpRequest.5.1")
     req.open("POST", endpoint, true)
-    req.onreadystatechange := Ready
-
+    req.SetTimeouts(10000, 30000, 30000, 30000) ; resolve, connect, send, receive
     req.SetRequestHeader("Content-Type", "application/json")
     req.SetRequestHeader("Authorization", "Bearer " apiKey) ; openai
     req.SetRequestHeader("api-key", apiKey) ; azure
 
     bodyJson := Jxon_dump(body, 4)
-
     LogDebug "bodyJson ->`n" bodyJson
 
     req.send(bodyJson)
+    req.WaitForResponse()
 
-    Ready() {
-        if (req.readyState != 4) {  ; Not done yet.
-            return
-        }
-        if (req.status == 200) { ; OK.
-            data := req.responseText
-            ;MsgBox data
-            HandleResponse(data, mode, promptName, input)
-        } else {
-            MsgBox "Status " req.status " " req.responseText, , 16
-        }
+    if (req.status == 200) { ; OK.
+        data := req.responseText
+        HandleResponse(data, mode, promptName, input)
+    } else {
+        MsgBox "Status " req.status " " req.responseText, , 16
     }
-    return
 
 }
 
@@ -256,8 +250,9 @@ HandleResponse(data, mode, promptName, input) {
         replaceSelected := GetSetting(promptName, "replace_selected")
 
         if StrLower(replaceSelected) == "false" {
-            responseSeperator := GetSetting(promptName, "response_seperator", "")
-            text := input . responseSeperator . text
+            responseStart := GetSetting(promptName, "response_start", "")
+            responseEnd := GetSetting(promptName, "response_end", "")
+            text := input . responseStart . text . responseEnd
         } else {
             ;# Remove leading newlines
             while SubStr(text, 1, 1) == '`n' {
@@ -318,8 +313,9 @@ InitPopupMenu() {
                     else if (id > 10)
                         keyboard_shortcut := "&" Chr(id + 86) " - "
                     else
-                        keyboard_shortcut := "&" id++ " - "
+                        keyboard_shortcut := "&" id " - "
                     menu_text := keyboard_shortcut menu_text
+                    id++
                 }
 
                 _iMenu.Add menu_text, MenuHandler
@@ -346,7 +342,6 @@ InitTrayMenu() {
     tray.add
     tray.add "Github readme", OpenGithub
     TrayAddStartWithWindows(tray)
-
 }
 
 TrayAddStartWithWindows(tray) {
@@ -389,15 +384,10 @@ ReloadSettings(*) {
     InitPopupMenu()
 }
 
-Unescape(obj) {
-    obj := StrReplace(obj, "\t", "`t")
-    obj := StrReplace(obj, "\r", "`r")
+UnescapeSetting(obj) {
     obj := StrReplace(obj, "\n", "`n")
-    obj := StrReplace(obj, "\b", "`b")
-    obj := StrReplace(obj, "\f", "`f")
     return obj
-}  
-
+}
 
 ShowWaitTooltip() {
     if (_running) {
@@ -410,21 +400,21 @@ ShowWaitTooltip() {
 }
 
 CheckSettings() {
-    if (FileExist("./settings.ini")) {
+    if (_reload_on_change and FileExist("./settings.ini")) {
         lastModified := fileGetTime("./settings.ini")
         if (lastModified != _lastModified) {
             global _lastModified := lastModified
             TrayTip("Settings Updated", "Restarting...", 5)
-            Sleep 1500
+            Sleep 2000
             Reload
         }
-        SetTimer () => CheckSettings(), -5000   ; Check every 5 seconds
+        SetTimer () => CheckSettings(), -10000   ; Check every 10 seconds
     }
 }
 
 LogDebug(msg) {
     if (_debug != false) {
-        now := FormatTime(A_Now, "yyyy-MM-dd HH:mm:ss")        
+        now := FormatTime(A_Now, "yyyy-MM-dd HH:mm:ss")
         logMsg := "[" . now . "] " . msg . "`n"
         FileAppend(logMsg, "./debug.log")
     }

@@ -16,7 +16,7 @@ jobs:
         run: |
           $cwd = (Get-Item .).FullName;
           
-          Invoke-WebRequest "https://www.autohotkey.com/download/ahk-v2.zip" -OutFile "$cwd\ahk-v2.zip";
+          Invoke-WebRequest "https://github.com/AutoHotkey/AutoHotkey/releases/download/v2.0.2/AutoHotkey_2.0.2.zip" -OutFile "$cwd\ahk-v2.zip";
           Expand-Archive -Path "$cwd\ahk-v2.zip" -DestinationPath "$cwd\_autohotkey\" -Force;
           Remove-Item -Path "$cwd\ahk-v2.zip" -Force
 

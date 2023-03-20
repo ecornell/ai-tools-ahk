@@ -206,7 +206,7 @@ CallAPI(mode, promptName, prompt, input, promptEnd) {
 
     req := ComObject("WinHttp.WinHttpRequest.5.1")
     req.open("POST", endpoint, true)
-    req.SetTimeouts(10000, 30000, 30000, 30000) ; resolve, connect, send, receive
+    req.SetTimeouts(10000, 30000, 30000, 60000) ; resolve, connect, send, receive
     req.SetRequestHeader("Content-Type", "application/json")
     req.SetRequestHeader("Authorization", "Bearer " apiKey) ; openai
     req.SetRequestHeader("api-key", apiKey) ; azure
@@ -282,9 +282,7 @@ HandleResponse(data, mode, promptName, input) {
         Sleep 500
         A_Clipboard := _oldClipboard
 
-    } catch as err {
-        MsgBox Format("{1}: {2}.`n`nFile:`t{3}`nLine:`t{4}`nWhat:`t{5}", type(err), err.Message, err.File, err.Line, err.What), , 16
-    } finally {
+     } finally {
         global _running := false
         RestoreCursor()
     }
@@ -307,7 +305,7 @@ InitPopupMenu() {
                 _iMenu.Add  ; Add a separator line.
             } else {
                 menu_text := GetSetting(v_promptName, "menu_text", v_promptName)
-                if (RegExMatch(menu_text, "^(?!.*&&).*&.*$") == 0) {
+                if (RegExMatch(menu_text, "^(?!.*&&).*&.*$") == 0) { 
                     if (id == 10)
                         keyboard_shortcut := "&0 - "
                     else if (id > 10)
@@ -393,7 +391,7 @@ ShowWaitTooltip() {
     if (_running) {
         elapsedTime := (A_TickCount - _startTime) / 1000
         ToolTip "Generating response... " Format("{:0.2f}", elapsedTime) "s"
-        SetTimer () => ShowWaitTooltip(), -25
+        SetTimer () => ShowWaitTooltip(), -50
     } else {
         ToolTip()
     }

@@ -1,7 +1,7 @@
 name: Build Release
 run-name: Build Release 🚀
 
-on: [push, release]
+on: [push]
 
 jobs:
   Build-Release:

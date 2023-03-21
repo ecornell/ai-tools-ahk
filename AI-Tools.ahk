@@ -201,22 +201,24 @@ GetBody(mode, promptName, prompt, input, promptEnd) {
 CallAPI(mode, promptName, prompt, input, promptEnd) {
 
     body := GetBody(mode, promptName, prompt, input, promptEnd)
-    endpoint := GetSetting(mode, "endpoint")
-    apiKey := GetSetting(mode, "api_key", GetSetting("settings", "default_api_key"))
-
-    req := ComObject("WinHttp.WinHttpRequest.5.1")
-    req.open("POST", endpoint, true)
-    req.SetTimeouts(10000, 30000, 30000, 60000) ; resolve, connect, send, receive
-    req.SetRequestHeader("Content-Type", "application/json")
-    req.SetRequestHeader("Authorization", "Bearer " apiKey) ; openai
-    req.SetRequestHeader("api-key", apiKey) ; azure
-
     bodyJson := Jxon_dump(body, 4)
     LogDebug "bodyJson ->`n" bodyJson
 
-    req.send(bodyJson)
-    req.WaitForResponse()
+    endpoint := GetSetting(mode, "endpoint")
+    apiKey := GetSetting(mode, "api_key", GetSetting("settings", "default_api_key"))
 
+    req := ComObject("Msxml2.ServerXMLHTTP")
+    
+    req.open("POST", endpoint, true)
+    req.SetRequestHeader("Content-Type", "application/json")
+    req.SetRequestHeader("Authorization", "Bearer " apiKey) ; openai
+    req.SetRequestHeader("api-key", apiKey) ; azure
+    req.SetRequestHeader('Content-Length', StrLen(bodyJson))
+    req.SetRequestHeader("If-Modified-Since", "Sat, 1 Jan 2000 00:00:00 GMT")
+    
+    req.send(bodyJson)
+
+    req.WaitForResponse(GetSetting("settings", "timeout", 60))
     if (req.status == 200) { ; OK.
         data := req.responseText
         HandleResponse(data, mode, promptName, input)
@@ -305,7 +307,7 @@ InitPopupMenu() {
                 _iMenu.Add  ; Add a separator line.
             } else {
                 menu_text := GetSetting(v_promptName, "menu_text", v_promptName)
-                if (RegExMatch(menu_text, "^(?!.*&&).*&.*$") == 0) { 
+                if (RegExMatch(menu_text, "^[^&]*&[^&]*$") == 0) { 
                     if (id == 10)
                         keyboard_shortcut := "&0 - "
                     else if (id > 10)

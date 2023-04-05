@@ -15,6 +15,8 @@
 
 This is a Windows tool that enables running custom OpenAI prompts on text in any window using global hotkeys.
 
+i.e. Low-friction AI text editing ("spicy autocomplete") anywhere in Windows.
+
 **Where can it be used?**  
 
 Almost anywhere in Windows where you can enter text.
@@ -41,9 +43,6 @@ The default hotkeys and prompts are set to the following:
 
 `Ctrl+Alt+Shift+k` - (Manual-select text - Prompt Menu) - Opens the prompt menu to pick the prompt to run on the selected text.
 
-### How does it work?
-
-
 
 ## Options
 
@@ -56,7 +55,7 @@ To have the script start when windows boots up, select "Start With Windows" from
 &nbsp;
 
 
-## Supported APIs and Models
+## Supported OpoenAI APIs and Models
 OpenAI 
 
     /v1/chat/completions (Default) - gpt-3.5-turbo
@@ -67,8 +66,13 @@ Azure
 
     /openai/deployments/***/completions - text-davinci-003
 
+## Compatibility
+Tested on Windows 10 Pro 22H2 64-bit.
 
 ## Credits
 
-TheArkive (JXON_ahk2) and the AHK community.
+TheArkive (JXON_ahk2), iseahound (SetSystemCursor), and the AHK community.
+
+- https://github.com/iseahound/SetSystemCursor
+- https://github.com/TheArkive/JXON_ahk2
 

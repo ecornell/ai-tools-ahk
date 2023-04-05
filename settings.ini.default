@@ -25,10 +25,12 @@ menu_hotkey     = ^!+k
 ;                     reload the settings.ini file if it is changed  
 ; cursor_wait_file : (Optional) The mouse cursor when waiting for response 
 ; debug            : (Optional) Enable writting debug logs to ./debug.log file
+; timeout          : (Optional) The number of seconds to wait for a response
 ;------------------------------------------------------------------------------
-default_mode=mode_chat_completion
-reload_on_change=false
-;cursor_wait_file =wait-1.ani
+default_mode      = mode_chat_completion
+reload_on_change  = false
+timeout           = 120
+;cursor_wait_file = wait-1.ani
 ;debug=true
 
 ;------------------------------------------------------------------------------
@@ -150,7 +152,7 @@ temperature=0
 [prompt_continue]
 prompt=""
 replace_selected=False
-menu_text="& Space - Continue writting"
+menu_text="Space& - Continue writting"
 response_start=" "
 
 ;------------------------------------------------------------------------------

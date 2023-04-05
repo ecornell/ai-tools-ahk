@@ -14,7 +14,7 @@ SendMode "Input"
 if not (FileExist("settings.ini")) {
     api_key := InputBox("Enter your OpenAI API key", "AI-Tools-AHK : Setup", "W400 H100").value
     if (api_key == "") {
-        MsgBox("You must enter an OpenAI key to use this script. Please restart the script and try again.")
+        MsgBox("To use this script, you need to enter an OpenAI key. Please restart the script and try again.")
         ExitApp
     }
     FileCopy("settings.ini.default", "settings.ini")
@@ -208,17 +208,18 @@ CallAPI(mode, promptName, prompt, input, promptEnd) {
     apiKey := GetSetting(mode, "api_key", GetSetting("settings", "default_api_key"))
 
     req := ComObject("Msxml2.ServerXMLHTTP")
-    
+
     req.open("POST", endpoint, true)
     req.SetRequestHeader("Content-Type", "application/json")
     req.SetRequestHeader("Authorization", "Bearer " apiKey) ; openai
     req.SetRequestHeader("api-key", apiKey) ; azure
     req.SetRequestHeader('Content-Length', StrLen(bodyJson))
     req.SetRequestHeader("If-Modified-Since", "Sat, 1 Jan 2000 00:00:00 GMT")
-    
+    req.SetTimeouts(0, 0, 0, GetSetting("settings", "timeout", 120) * 1000) ; read, connect, send, receive
+
     req.send(bodyJson)
 
-    req.WaitForResponse(GetSetting("settings", "timeout", 60))
+    req.WaitForResponse()
     if (req.status == 200) { ; OK.
         data := req.responseText
         HandleResponse(data, mode, promptName, input)
@@ -284,7 +285,7 @@ HandleResponse(data, mode, promptName, input) {
         Sleep 500
         A_Clipboard := _oldClipboard
 
-     } finally {
+    } finally {
         global _running := false
         RestoreCursor()
     }
@@ -307,7 +308,7 @@ InitPopupMenu() {
                 _iMenu.Add  ; Add a separator line.
             } else {
                 menu_text := GetSetting(v_promptName, "menu_text", v_promptName)
-                if (RegExMatch(menu_text, "^[^&]*&[^&]*$") == 0) { 
+                if (RegExMatch(menu_text, "^[^&]*&[^&]*$") == 0) {
                     if (id == 10)
                         keyboard_shortcut := "&0 - "
                     else if (id > 10)

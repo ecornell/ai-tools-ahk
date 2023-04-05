@@ -1,5 +1,6 @@
 ; Source:   Serenity - https://autohotkey.com/board/topic/32608-changing-the-system-cursor/
 ; Modified: iseahound - https://www.autohotkey.com/boards/viewtopic.php?t=75867
+; MIT - https://github.com/iseahound/SetSystemCursor
 
 SetSystemCursor(Cursor := "", cx := 0, cy := 0) {
 

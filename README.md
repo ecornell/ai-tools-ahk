@@ -55,7 +55,7 @@ To have the script start when windows boots up, select "Start With Windows" from
 &nbsp;
 
 
-## Supported OpoenAI APIs and Models
+## Supported OpenAI APIs and Models
 OpenAI 
 
     /v1/chat/completions (Default) - gpt-3.5-turbo

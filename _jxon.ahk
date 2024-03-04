@@ -195,8 +195,16 @@ Jxon_Dump(obj, indent:="", lvl:=1) {
     } Else If (obj is Number)
         return obj
     
-    Else ; String
+    Else { ; String
+
+		if(obj == "true") 
+			return "true"
+
+		if(obj == "false")
+			return "false"
+		
         return escape_str(obj)
+	}
 	
     escape_str(obj) {
         obj := StrReplace(obj,"\","\\")

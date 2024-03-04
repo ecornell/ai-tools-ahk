@@ -24,6 +24,7 @@ RestoreCursor()
 
 
 ;# globals
+_running := false
 _settingsCache := Map()
 _lastModified := fileGetTime("./settings.ini")
 _displayResponse := false
@@ -60,6 +61,12 @@ ShowPopupMenu() {
 
 PromptHandler(promptName, append := false) {
     try {
+
+        if (_running) {            
+            ;MsgBox "Already running. Please wait for the current request to finish."
+            Reload
+            return
+        }
 
         global _running := true
         global _startTime := A_TickCount
@@ -118,7 +125,6 @@ GetTextFromClip() {
     return text
 }
 
-
 GetSetting(section, key, defaultValue := "") {
     global _settingsCache
     if (_settingsCache.Has(section . key . defaultValue)) {
@@ -160,41 +166,21 @@ GetBody(mode, promptName, prompt, input, promptEnd) {
 
     ;
 
-    if (mode == "mode_chat_completion") {
-        content := prompt . input . promptEnd
-        messages := []
-        prompt_system := GetSetting(promptName, "prompt_system", "")
-        if (prompt_system != "") {
-            messages.Push(Map("role", "system", "content", prompt_system))
-        }
-        messages.Push(Map("role", "user", "content", content))
-        body["messages"] := messages
-        body["max_tokens"] := max_tokens
-        body["temperature"] := temperature
-        body["frequency_penalty"] := frequency_penalty
-        body["presence_penalty"] := presence_penalty
-        body["top_p"] := top_p
-        body["model"] := model
-
-    } else if (mode == "mode_completion" or mode == "mode_completion_azure") {
-        fullPrompt := prompt . input . promptEnd
-        body["prompt"] := fullPrompt
-        body["max_tokens"] := max_tokens
-        body["temperature"] := temperature
-        body["frequency_penalty"] := frequency_penalty
-        body["presence_penalty"] := presence_penalty
-        body["top_p"] := top_p
-        body["best_of"] := best_of
-        body["stop"] := stop
-        body["model"] := model
-
-    } else if (mode == "mode_edit") {
-        body["input"] := input
-        body["instruction"] := prompt
-        body["temperature"] := temperature
-        body["top_p"] := top_p
-        body["model"] := model
+    content := prompt . input . promptEnd
+    messages := []
+    prompt_system := GetSetting(promptName, "prompt_system", "")
+    if (prompt_system != "") {
+        messages.Push(Map("role", "system", "content", prompt_system))
     }
+    messages.Push(Map("role", "user", "content", content))
+    body["messages"] := messages
+    body["max_tokens"] := max_tokens
+    body["temperature"] := temperature
+    body["frequency_penalty"] := frequency_penalty
+    body["presence_penalty"] := presence_penalty
+    body["top_p"] := top_p
+    body["model"] := model
+
     return body
 }
 
@@ -236,12 +222,7 @@ HandleResponse(data, mode, promptName, input) {
         LogDebug "data ->`n" data
 
         var := Jxon_Load(&data)
-
-        if (mode == "mode_chat_completion") {
-            text := var.Get("choices")[1].Get("message").Get("content")
-        } else {
-            text := var.Get("choices")[1].Get("text")
-        }
+        text := var.Get("choices")[1].Get("message").Get("content")
 
         if text == "" {
             MsgBox "No text was generated. Consider modifying your input."

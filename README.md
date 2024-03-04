@@ -55,7 +55,7 @@ To have the script start when windows boots up, select "Start With Windows" from
 &nbsp;
 
 
-## Supported OpoenAI APIs and Models
+## Supported OpenAI APIs and Models
 OpenAI and Azure OpenAI API's are supported.
 
     API:

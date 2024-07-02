@@ -6,6 +6,7 @@
 #singleInstance force
 #Include "_jxon.ahk"
 #include "_Cursor.ahk"
+#Include "_MD2HTML.ahk"
 
 Persistent
 SendMode "Input"
@@ -118,7 +119,7 @@ GetTextFromClip() {
 
     if StrLen(text) < 1 {
         throw ValueError("No text selected", -1)
-    } else if StrLen(text) > 2048 {
+    } else if StrLen(text) > 16000 {
         throw ValueError("Text is too long", -1)
     }
 
@@ -217,6 +218,16 @@ CallAPI(mode, promptName, prompt, input, promptEnd) {
 
 HandleResponse(data, mode, promptName, input) {
 
+    Gui_Size(thisGui, MinMax, Width, Height)
+    {
+        if MinMax = -1  ; The window has been minimized. No action needed.
+            return
+        ; Otherwise, the window has been resized or maximized. Resize the Edit control to match.
+        ;xEdit.Move(,, Width-30, Height-55)
+        ogcActiveXWBC.Move(,, Width-30, Height-55)
+        xClose.Move(Width/2 - 40,Height-40,,)
+    }
+
     try {
 
         LogDebug "data ->`n" data
@@ -249,13 +260,34 @@ HandleResponse(data, mode, promptName, input) {
             }
         }
 
-        if _displayResponse {
+        response_type := GetSetting(promptName, "response_type", "")
+        if _displayResponse or response_type == "popup" {
             MyGui := Gui(, "Response")
-            MyGui.SetFont("s14")
+            MyGui.SetFont("s13")
             MyGui.Opt("+AlwaysOnTop +Owner +Resize")  ; +Owner avoids a taskbar button.
-            MyGui.Add("Edit", "r20 vMyEdit w600 Wrap", text)
-            MyGui.Add("Button", , "Close").OnEvent("Click", (*) => WinClose())
-            MyGui.Show("NoActivate")
+            
+            ogcActiveXWBC := MyGui.Add("ActiveX", "xm w800 h480 vIE", "Shell.Explorer")
+            WB := ogcActiveXWBC.Value
+            WB.Navigate("about:blank")
+            css := FileRead("style.css")
+            options := {css:css
+                , font_name:"Segoe UI"
+                , font_size:16
+                , font_weight:400
+                , line_height:"1.6"} ; 1.6em - put decimals in "" for easier accuracy/handling.
+            html := make_html(text, options, false)
+            WB.document.write(html)            
+
+            ;xEdit := MyGui.Add("Edit", "r10 vMyEdit w800 Wrap", text)
+            ;xEdit.Value .= "`n`n----`n`n" html
+
+            xClose := MyGui.Add("Button", "Default w80", "Close")
+            xClose.OnEvent("Click", (*) => WinClose())
+
+            MyGui.Show("NoActivate AutoSize Center")
+            MyGui.GetPos(&x,&y,&w,&h)
+            xClose.Move(w/2 - 40,,,)
+            MyGui.OnEvent("Size", Gui_Size)
         } else {
             WinActivate _activeWin
             A_Clipboard := text

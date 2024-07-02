@@ -72,8 +72,9 @@ Tested on Windows 10 Pro 22H2 64-bit.
 
 ## Credits
 
-TheArkive (JXON_ahk2), iseahound (SetSystemCursor), and the AHK community.
+TheArkive (JXON_ahk2, M-ArkDown_ahk2), iseahound (SetSystemCursor), and the AHK community.
 
 - https://github.com/iseahound/SetSystemCursor
 - https://github.com/TheArkive/JXON_ahk2
+- https://github.com/TheArkive/M-ArkDown_ahk2
 

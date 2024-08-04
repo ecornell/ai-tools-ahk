@@ -72,14 +72,20 @@ PromptHandler(promptName, append := false) {
         global _running := true
         global _startTime := A_TickCount
 
-        ShowWaitTooltip()
-        SetSystemCursor(GetSetting("settings", "cursor_wait_file", "wait"))
-
         prompt := GetSetting(promptName, "prompt")
         promptEnd := GetSetting(promptName, "prompt_end")
         mode := GetSetting(promptName, "mode", GetSetting("settings", "default_mode"))
-        input := GetTextFromClip()
+        
+        try {
+            input := GetTextFromClip()
+        } catch {
+            global _running := false
+            RestoreCursor()
+            return
+        }
 
+        ShowWaitTooltip()
+        SetSystemCursor(GetSetting("settings", "cursor_wait_file", "wait"))
         CallAPI(mode, promptName, prompt, input, promptEnd)
 
     } catch as err {
@@ -102,7 +108,13 @@ SelectText() {
         ; In Notepad++ select the current line
         Send "{End}{End}+{Home}+{Home}"
     } else {
-        Send "^a"
+        ; If text is already selected, don't select all text
+        Send "^c"
+        ClipWait(2)
+        text := A_Clipboard
+        if StrLen(text) < 1 {
+            Send "^a"
+        }
     }
     sleep 50
 }
@@ -118,12 +130,17 @@ GetTextFromClip() {
     text := A_Clipboard
 
     if StrLen(text) < 1 {
+        ShowWarning("No text selected. Please select text and try again.")
         throw ValueError("No text selected", -1)
     } else if StrLen(text) > 16000 {
         throw ValueError("Text is too long", -1)
     }
 
     return text
+}
+
+ShowWarning(message) {
+    MsgBox message
 }
 
 GetSetting(section, key, defaultValue := "") {

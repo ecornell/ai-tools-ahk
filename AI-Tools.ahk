@@ -99,20 +99,18 @@ PromptHandler(promptName, append := false) {
 ;###
 
 SelectText() {
-    if WinActive("ahk_exe WINWORD.EXE") or
-        WinActive("ahk_exe OUTLOOK.EXE") {
-        ; In Word/Outlook select the current paragraph
-        Send "^{Up}^+{Down}+{Left}" ; Move to para start, select para, move left to not include para end
-    } else if WinActive("ahk_exe notepad++.exe") or
-        WinActive("ahk_exe Code.exe") {
-        ; In Notepad++ select the current line
-        Send "{End}{End}+{Home}+{Home}"
-    } else {
-        ; If text is already selected, don't select all text
-        Send "^c"
-        ClipWait(2)
-        text := A_Clipboard
-        if StrLen(text) < 1 {
+    Send "^c"
+    ClipWait(2)
+    text := A_Clipboard
+    if StrLen(text) < 1 {
+        if WinActive("ahk_exe WINWORD.EXE") or WinActive("ahk_exe OUTLOOK.EXE") {
+            ; In Word/Outlook select the current paragraph
+            Send "^{Up}^+{Down}+{Left}" ; Move to para start, select para, move left to not include para end
+        } else if WinActive("ahk_exe notepad++.exe") or WinActive("ahk_exe Code.exe") {
+            ; In Notepad++ select the current line
+            Send "{End}{End}+{Home}+{Home}"
+        } else {
+            ; Select all text if no text is selected
             Send "^a"
         }
     }

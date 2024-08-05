@@ -99,6 +99,7 @@ PromptHandler(promptName, append := false) {
 ;###
 
 SelectText() {
+    A_Clipboard := ""
     Send "^c"
     ClipWait(2)
     text := A_Clipboard
@@ -201,6 +202,10 @@ GetBody(mode, promptName, prompt, input, promptEnd) {
 }
 
 CallAPI(mode, promptName, prompt, input, promptEnd) {
+    if (StrLen(input) < 1) {
+        ; Input is too short. No request will be made to the API.
+        return
+    }
 
     body := GetBody(mode, promptName, prompt, input, promptEnd)
     bodyJson := Jxon_dump(body, 4)
@@ -219,16 +224,30 @@ CallAPI(mode, promptName, prompt, input, promptEnd) {
     req.SetRequestHeader("If-Modified-Since", "Sat, 1 Jan 2000 00:00:00 GMT")
     req.SetTimeouts(0, 0, 0, GetSetting("settings", "timeout", 120) * 1000) ; read, connect, send, receive
 
-    req.send(bodyJson)
+    try {
+        req.send(bodyJson)
+        req.WaitForResponse()
 
-    req.WaitForResponse()
-    if (req.status == 200) { ; OK.
-        data := req.responseText
-        HandleResponse(data, mode, promptName, input)
-    } else {
-        MsgBox "Status " req.status " " req.responseText, , 16
+        if (req.status == 0) {
+            RestoreCursor()
+            global _running := false
+            MsgBox "Error: Unable to connect to the API. Please check your internet connection and try again.", , 16
+            return
+        } else if (req.status == 200) { ; OK.
+            data := req.responseText
+            HandleResponse(data, mode, promptName, input)
+        } else {
+            RestoreCursor()
+            global _running := false
+            MsgBox "Error: Status " req.status " - " req.responseText, , 16
+            return
+        }
+    } catch {
+        RestoreCursor()
+        global _running := false
+        MsgBox "Error: Unable to connect to the API. Please check your internet connection and try again.", , 16
+        return
     }
-
 }
 
 HandleResponse(data, mode, promptName, input) {

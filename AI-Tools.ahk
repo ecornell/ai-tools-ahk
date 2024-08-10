@@ -72,6 +72,9 @@ PromptHandler(promptName, append := false) {
         global _running := true
         global _startTime := A_TickCount
 
+        ShowWaitTooltip()
+        SetSystemCursor(GetSetting("settings", "cursor_wait_file", "wait"))
+
         prompt := GetSetting(promptName, "prompt")
         promptEnd := GetSetting(promptName, "prompt_end")
         mode := GetSetting(promptName, "mode", GetSetting("settings", "default_mode"))
@@ -84,8 +87,6 @@ PromptHandler(promptName, append := false) {
             return
         }
 
-        ShowWaitTooltip()
-        SetSystemCursor(GetSetting("settings", "cursor_wait_file", "wait"))
         CallAPI(mode, promptName, prompt, input, promptEnd)
 
     } catch as err {
@@ -99,19 +100,22 @@ PromptHandler(promptName, append := false) {
 ;###
 
 SelectText() {
+    global _oldClipboard := A_Clipboard
+
     A_Clipboard := ""
     Send "^c"
     ClipWait(2)
     text := A_Clipboard
-    if StrLen(text) < 1 {
-        if WinActive("ahk_exe WINWORD.EXE") or WinActive("ahk_exe OUTLOOK.EXE") {
-            ; In Word/Outlook select the current paragraph
-            Send "^{Up}^+{Down}+{Left}" ; Move to para start, select para, move left to not include para end
-        } else if WinActive("ahk_exe notepad++.exe") or WinActive("ahk_exe Code.exe") {
-            ; In Notepad++ select the current line
-            Send "{End}{End}+{Home}+{Home}"
-        } else {
-            ; Select all text if no text is selected
+    
+    if WinActive("ahk_exe WINWORD.EXE") or WinActive("ahk_exe OUTLOOK.EXE") {
+        ; In Word/Outlook select the current paragraph
+        Send "^{Up}^+{Down}+{Left}" ; Move to para start, select para, move left to not include para end
+    } else if WinActive("ahk_exe notepad++.exe") or WinActive("ahk_exe Code.exe") {
+        ; In Notepad++ select the current line
+        Send "{End}{End}+{Home}+{Home}"
+    } else {
+        ; Select all text if no text is selected
+        if StrLen(text) < 1 {
             Send "^a"
         }
     }
@@ -121,7 +125,9 @@ SelectText() {
 GetTextFromClip() {
 
     global _activeWin := WinGetTitle("A")
-    global _oldClipboard := A_Clipboard
+    if _oldClipboard == "" {
+        global _oldClipboard := A_Clipboard
+    }
 
     A_Clipboard := ""
     Send "^c"
@@ -129,7 +135,6 @@ GetTextFromClip() {
     text := A_Clipboard
 
     if StrLen(text) < 1 {
-        ShowWarning("No text selected. Please select text and try again.")
         throw ValueError("No text selected", -1)
     } else if StrLen(text) > 16000 {
         throw ValueError("Text is too long", -1)
@@ -202,10 +207,6 @@ GetBody(mode, promptName, prompt, input, promptEnd) {
 }
 
 CallAPI(mode, promptName, prompt, input, promptEnd) {
-    if (StrLen(input) < 1) {
-        ; Input is too short. No request will be made to the API.
-        return
-    }
 
     body := GetBody(mode, promptName, prompt, input, promptEnd)
     bodyJson := Jxon_dump(body, 4)
@@ -242,15 +243,18 @@ CallAPI(mode, promptName, prompt, input, promptEnd) {
             MsgBox "Error: Status " req.status " - " req.responseText, , 16
             return
         }
-    } catch {
+    } catch as e {
         RestoreCursor()
         global _running := false
-        MsgBox "Error: Unable to connect to the API. Please check your internet connection and try again.", , 16
+        MsgBox "Error: " "Exception thrown!`n`nwhat: " e.what "`nfile: " e.file 
+        . "`nline: " e.line "`nmessage: " e.message "`nextra: " e.extra, , 16
         return
     }
 }
 
 HandleResponse(data, mode, promptName, input) {
+
+    global _oldClipboard
 
     Gui_Size(thisGui, MinMax, Width, Height)
     {
@@ -329,11 +333,12 @@ HandleResponse(data, mode, promptName, input) {
         }
 
         global _running := false
-        Sleep 500
-        A_Clipboard := _oldClipboard
-
+        Sleep 500       
+        
     } finally {
         global _running := false
+        A_Clipboard := _oldClipboard
+        global _oldClipboard := ""
         RestoreCursor()
     }
 }

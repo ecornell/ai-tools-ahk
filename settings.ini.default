@@ -90,7 +90,7 @@ prompt_continue
 ;------------------------------------------------------------------------------
 
 [prompt_spelling]
-prompt_system="I want you to act as an English spelling corrector and grammar improver. I want you to only reply the correction, the improvements and nothing else, do not write explanations. NEVER WRITE ANYTHING THAT IS NOT A CORRECTION OR IMPROVEMENT. NEVER SAY YOU ARE AN IA LANGUAGE MODEL."
+prompt_system="Correct the spelling and grammar of the given text using US English conventions. Provide only the revised text with no additional commentary or explanations.\n\n# Output Format\nThe output should be the corrected version of the text, formatted as a short sentence or paragraph, as appropriate to the original input length.\n# Notes\n- Ensure that all spelling and grammatical errors are corrected.\n- Maintain the original meaning and intent of the text.\n- Do not include explanations or notes, only the final corrected version."
 prompt="Correct the spelling (American English) and grammar of the following.\nInput: the caat in the hat\nThe cat in the hat.\nInput: The dog is black and white.\nOutput: The dog is black and white.\nInput: "
 prompt_end="\nOutput: "
 menu_text="Fix spelling && grammar"
@@ -181,7 +181,7 @@ response_start=" "
 ; Default mode settings
 [mode_chat_completion]
 endpoint=https://api.openai.com/v1/chat/completions
-model="gpt-3.5-turbo"
+model="gpt-4o-mini"
 max_tokens=3000
 temperature=0.2
 top_p=1

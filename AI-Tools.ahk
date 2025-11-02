@@ -24,7 +24,7 @@ if not (FileExist("settings.ini")) {
             ExitApp
         }
         FileCopy("settings.ini.default", "settings.ini")
-        IniWrite(api_key, ".\settings.ini", "settings", "default_api_key")
+        IniWrite(api_key, "./settings.ini", "settings", "default_api_key")
     } catch as e {
         MsgBox("Error creating settings file: " e.Message, , 16)
         ExitApp
@@ -41,6 +41,8 @@ _lastModified := fileGetTime("./settings.ini")
 _displayResponse := false
 _activeWin := ""
 _oldClipboard := ""
+_iMenu := ""
+_iMenuItemParms := Map()
 _debug := GetSetting("settings", "debug", false)
 _reload_on_change := GetSetting("settings", "reload_on_change", false)
 
@@ -53,20 +55,42 @@ InitTrayMenu()
 
 ;# hotkeys
 
-HotKey GetSetting("settings", "hotkey_1"), (*) => (
-    SelectText()
-    PromptHandler(GetSetting("settings", "hotkey_1_prompt")))
+try {
+    hotkey1 := GetSetting("settings", "hotkey_1")
+    if (hotkey1 != "") {
+        HotKey hotkey1, (*) => (
+            SelectText()
+            PromptHandler(GetSetting("settings", "hotkey_1_prompt")))
+    }
+} catch as e {
+    MsgBox("Error setting hotkey_1: " e.Message, , 16)
+}
 
-HotKey GetSetting("settings", "hotkey_2"), (*) => (
-    SelectText()
-    ShowPopupMenu())
+try {
+    hotkey2 := GetSetting("settings", "hotkey_2")
+    if (hotkey2 != "") {
+        HotKey hotkey2, (*) => (
+            SelectText()
+            ShowPopupMenu())
+    }
+} catch as e {
+    MsgBox("Error setting hotkey_2: " e.Message, , 16)
+}
 
-HotKey GetSetting("settings", "menu_hotkey"), (*) => (
-    ShowPopupMenu())
+try {
+    menuHotkey := GetSetting("settings", "menu_hotkey")
+    if (menuHotkey != "") {
+        HotKey menuHotkey, (*) => (
+            ShowPopupMenu())
+    }
+} catch as e {
+    MsgBox("Error setting menu_hotkey: " e.Message, , 16)
+}
 
 ;###
 
 ShowPopupMenu() {
+    global _iMenu
     _iMenu.Show()
 }
 
@@ -91,6 +115,16 @@ PromptHandler(promptName, append := false) {
         prompt := GetSetting(promptName, "prompt")
         promptEnd := GetSetting(promptName, "prompt_end")
         mode := GetSetting(promptName, "mode", GetSetting("settings", "default_mode"))
+        
+        ; Validate required settings
+        if (mode == "" or mode == "default_mode") {
+            MsgBox("Error: Mode not configured for prompt '" promptName "'.`n`nPlease check your settings.ini file.", , 16)
+            return
+        }
+        if (prompt == "" or prompt == "prompt") {
+            MsgBox("Error: Prompt text not configured for '" promptName "'.`n`nPlease check your settings.ini file.", , 16)
+            return
+        }
         
         try {
             input := GetTextFromClip()
@@ -123,7 +157,11 @@ SelectText() {
 
     A_Clipboard := ""
     Send "^c"
-    ClipWait(2)
+    if !ClipWait(2) {
+        ; ClipWait timed out - clipboard operation failed
+        A_Clipboard := _oldClipboard
+        return
+    }
     text := A_Clipboard
     
     if WinActive("ahk_exe WINWORD.EXE") or WinActive("ahk_exe OUTLOOK.EXE") {
@@ -149,7 +187,9 @@ GetTextFromClip() {
     
     A_Clipboard := ""
     Send "^c"
-    ClipWait(2)
+    if !ClipWait(2) {
+        throw ValueError("Clipboard operation timed out", -1)
+    }
     text := A_Clipboard
 
     if StrLen(text) < 1 {
@@ -172,7 +212,7 @@ GetSetting(section, key, defaultValue := "") {
         return _settingsCache.Get(section . key . defaultValue)
     } else {
         try {
-            value := IniRead(".\settings.ini", section, key, defaultValue)
+            value := IniRead("./settings.ini", section, key, defaultValue)
             if IsNumber(value) {
                 value := Number(value)
             } else {
@@ -210,6 +250,17 @@ GetBody(mode, promptName, prompt, input, promptEnd) {
     best_of := GetSetting(promptName, "best_of", best_of)
     stop := GetSetting(promptName, "stop", stop)
 
+    ;; validate numeric settings
+    if (!IsNumber(max_tokens) or max_tokens <= 0) {
+        max_tokens := 1000  ; sensible default
+    }
+    if (!IsNumber(temperature) or temperature < 0 or temperature > 2) {
+        temperature := 0.7  ; sensible default
+    }
+    if (!IsNumber(top_p) or top_p < 0 or top_p > 1) {
+        top_p := 1  ; sensible default
+    }
+
     ;
 
     content := prompt . input . promptEnd
@@ -239,6 +290,20 @@ CallAPI(mode, promptName, prompt, input, promptEnd) {
 
     endpoint := GetSetting(mode, "endpoint")
     apiKey := GetSetting(mode, "api_key", GetSetting("settings", "default_api_key"))
+
+    ; Validate required settings
+    if (endpoint == "" or endpoint == "endpoint") {
+        MsgBox("Error: API endpoint not configured for mode '" mode "'.`n`nPlease check your settings.ini file.", , 16)
+        return
+    }
+    if (apiKey == "" or apiKey == "default_api_key") {
+        MsgBox("Error: API key not configured.`n`nPlease check your settings.ini file.", , 16)
+        return
+    }
+    if (!body.Has("model") or body["model"] == "" or body["model"] == "model") {
+        MsgBox("Error: Model not configured for mode '" mode "'.`n`nPlease check your settings.ini file.", , 16)
+        return
+    }
 
     req := ComObject("Msxml2.ServerXMLHTTP")
 
@@ -390,11 +455,11 @@ HandleResponse(data, mode, promptName, input) {
 }
 
 InitPopupMenu() {
-    global _iMenu, _displayResponse
+    global _iMenu, _displayResponse, _iMenuItemParms
     _iMenu := Menu()
-    iMenuItemParms := Map()
+    _iMenuItemParms := Map()
 
-    _iMenu.add "&`` - Display response in new window", NewWindowCheckHandler
+    _iMenu.add "&`` - Display response in new window", MenuNewWindowCheckHandler
     _iMenu.Add  ; Add a separator line.
 
     menu_items := IniRead("./settings.ini", "popup_menu")
@@ -418,21 +483,24 @@ InitPopupMenu() {
                     id++
                 }
 
-                _iMenu.Add menu_text, MenuHandler
+                _iMenu.Add menu_text, MenuItemHandler
                 item_count := DllCall("GetMenuItemCount", "ptr", _iMenu.Handle)
-                iMenuItemParms[item_count] := v_promptName
+                _iMenuItemParms[item_count] := v_promptName
             }
         }
     }
-    MenuHandler(ItemName, ItemPos, MyMenu) {
-        PromptHandler(iMenuItemParms[ItemPos])
-    }
-    NewWindowCheckHandler(*) {
-        global _iMenu, _displayResponse
-        _iMenu.ToggleCheck "&`` - Display response in new window"
-        _displayResponse := !_displayResponse
-        _iMenu.Show()
-    }
+}
+
+MenuItemHandler(ItemName, ItemPos, MyMenu) {
+    global _iMenuItemParms
+    PromptHandler(_iMenuItemParms[ItemPos])
+}
+
+MenuNewWindowCheckHandler(*) {
+    global _iMenu, _displayResponse
+    _iMenu.ToggleCheck "&`` - Display response in new window"
+    _displayResponse := !_displayResponse
+    _iMenu.Show()
 }
 
 InitTrayMenu() {
@@ -448,7 +516,7 @@ InitTrayMenu() {
 TrayAddStartWithWindows(tray) {
     tray.add "Start with Windows", StartWithWindowsAction
     SplitPath a_scriptFullPath, , , , &script_name
-    _sww_shortcut := a_startup "\" script_name ".lnk"
+    _sww_shortcut := a_startup "/" script_name ".lnk"
     if FileExist(_sww_shortcut) {
         fileGetShortcut _sww_shortcut, &target  ;# update if script has moved
         if (target != a_scriptFullPath) {
@@ -476,7 +544,7 @@ OpenGithub(*) {
 }
 
 OpenSettings(*) {
-    Run A_ScriptDir . "\settings.ini"
+    Run A_ScriptDir . "/settings.ini"
 }
 
 ReloadSettings(*) {

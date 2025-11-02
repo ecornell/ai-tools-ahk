@@ -18,14 +18,24 @@ if not (FileExist("settings.ini")) {
         MsgBox("To use this script, you need to enter an OpenAI key. Please restart the script and try again.")
         ExitApp
     }
-    FileCopy("settings.ini.default", "settings.ini")
-    IniWrite(api_key, ".\settings.ini", "settings", "default_api_key")
+    try {
+        if not FileExist("settings.ini.default") {
+            MsgBox("Error: settings.ini.default not found. Please reinstall the script.", , 16)
+            ExitApp
+        }
+        FileCopy("settings.ini.default", "settings.ini")
+        IniWrite(api_key, ".\settings.ini", "settings", "default_api_key")
+    } catch as e {
+        MsgBox("Error creating settings file: " e.Message, , 16)
+        ExitApp
+    }
 }
 RestoreCursor()
 
 
 ;# globals
 _running := false
+_startTime := 0
 _settingsCache := Map()
 _lastModified := fileGetTime("./settings.ini")
 _displayResponse := false
@@ -61,16 +71,19 @@ ShowPopupMenu() {
 }
 
 PromptHandler(promptName, append := false) {
+    global _running, _startTime
+    
     try {
 
         if (_running) {            
             ;MsgBox "Already running. Please wait for the current request to finish."
+            RestoreCursor()
             Reload
             return
         }
 
-        global _running := true
-        global _startTime := A_TickCount
+        _running := true
+        _startTime := A_TickCount
 
         ShowWaitTooltip()
         SetSystemCursor(GetSetting("settings", "cursor_wait_file", "wait"))
@@ -82,7 +95,7 @@ PromptHandler(promptName, append := false) {
         try {
             input := GetTextFromClip()
         } catch {
-            global _running := false
+            _running := false
             RestoreCursor()
             return
         }
@@ -90,17 +103,23 @@ PromptHandler(promptName, append := false) {
         CallAPI(mode, promptName, prompt, input, promptEnd)
 
     } catch as err {
-        global _running := false
-        RestoreCursor()
         MsgBox Format("{1}: {2}.`n`nFile:`t{3}`nLine:`t{4}`nWhat:`t{5}", type(err), err.Message, err.File, err.Line, err.What), , 16
-        ;throw err
+    } finally {
+        ; Ensure cleanup happens in all error paths
+        if (_running) {
+            _running := false
+            ClearWaitTooltip()
+            RestoreCursor()
+        }
     }
 }
 
 ;###
 
 SelectText() {
-    global _oldClipboard := A_Clipboard
+    global _oldClipboard
+    
+    _oldClipboard := A_Clipboard
 
     A_Clipboard := ""
     Send "^c"
@@ -123,12 +142,11 @@ SelectText() {
 }
 
 GetTextFromClip() {
+    global _activeWin
 
-    global _activeWin := WinGetTitle("A")
-    if _oldClipboard == "" {
-        global _oldClipboard := A_Clipboard
-    }
-
+    _activeWin := WinGetTitle("A")
+    ; _oldClipboard should already be saved by SelectText()
+    
     A_Clipboard := ""
     Send "^c"
     ClipWait(2)
@@ -149,17 +167,23 @@ ShowWarning(message) {
 
 GetSetting(section, key, defaultValue := "") {
     global _settingsCache
+    
     if (_settingsCache.Has(section . key . defaultValue)) {
         return _settingsCache.Get(section . key . defaultValue)
     } else {
-        value := IniRead(".\settings.ini", section, key, defaultValue)
-        if IsNumber(value) {
-            value := Number(value)
-        } else {
-            value := UnescapeSetting(value)
+        try {
+            value := IniRead(".\settings.ini", section, key, defaultValue)
+            if IsNumber(value) {
+                value := Number(value)
+            } else {
+                value := UnescapeSetting(value)
+            }
+            _settingsCache.Set(section . key . defaultValue, value)
+            return value
+        } catch as e {
+            ; If IniRead fails, return default value
+            return defaultValue
         }
-        _settingsCache.Set(section . key . defaultValue, value)
-        return value
     }
 }
 
@@ -207,6 +231,7 @@ GetBody(mode, promptName, prompt, input, promptEnd) {
 }
 
 CallAPI(mode, promptName, prompt, input, promptEnd) {
+    global _running
 
     body := GetBody(mode, promptName, prompt, input, promptEnd)
     bodyJson := Jxon_dump(body, 4)
@@ -217,54 +242,68 @@ CallAPI(mode, promptName, prompt, input, promptEnd) {
 
     req := ComObject("Msxml2.ServerXMLHTTP")
 
-    req.open("POST", endpoint, true)
-    req.SetRequestHeader("Content-Type", "application/json")
-    req.SetRequestHeader("Authorization", "Bearer " apiKey) ; openai
-    req.SetRequestHeader("api-key", apiKey) ; azure
-    req.SetRequestHeader('Content-Length', StrLen(bodyJson))
-    req.SetRequestHeader("If-Modified-Since", "Sat, 1 Jan 2000 00:00:00 GMT")
-    req.SetTimeouts(0, 0, 0, GetSetting("settings", "timeout", 120) * 1000) ; read, connect, send, receive
-
     try {
-        req.send(bodyJson)
+        req.open("POST", endpoint, true)
+        req.SetRequestHeader("Content-Type", "application/json")
+        req.SetRequestHeader("Authorization", "Bearer " apiKey) ; openai
+        req.SetRequestHeader("api-key", apiKey) ; azure
+        req.SetRequestHeader('Content-Length', StrLen(bodyJson))
+        req.SetRequestHeader("If-Modified-Since", "Sat, 1 Jan 2000 00:00:00 GMT")
+        req.SetTimeouts(0, 0, 0, GetSetting("settings", "timeout", 120) * 1000) ; read, connect, send, receive
+
+        req.send(bodyJson "")
         req.WaitForResponse()
 
         if (req.status == 0) {
-            RestoreCursor()
-            global _running := false
             MsgBox "Error: Unable to connect to the API. Please check your internet connection and try again.", , 16
             return
         } else if (req.status == 200) { ; OK.
             data := req.responseText
             HandleResponse(data, mode, promptName, input)
         } else {
-            RestoreCursor()
-            global _running := false
             MsgBox "Error: Status " req.status " - " req.responseText, , 16
             return
         }
     } catch as e {
-        RestoreCursor()
-        global _running := false
         MsgBox "Error: " "Exception thrown!`n`nwhat: " e.what "`nfile: " e.file 
         . "`nline: " e.line "`nmessage: " e.message "`nextra: " e.extra, , 16
         return
+    } finally {
+        ; Clean up COM object
+        req := ""
+        ; Ensure cleanup happens in all paths if HandleResponse didn't complete
+        if (_running) {
+            _running := false
+            ClearWaitTooltip()
+            RestoreCursor()
+        }
+    }
+}
+
+ResponseGui_Size(thisGui, MinMax, Width, Height)
+{
+    if MinMax = -1  ; The window has been minimized. No action needed.
+        return
+    ; Otherwise, the window has been resized or maximized. Resize the controls to match.
+    try {
+        ogcActiveXWBC := thisGui["IE"]
+        xClose := ""
+        ; Find the close button
+        for ctrlName, ctrl in thisGui {
+            if (ctrl.Type = "Button") {
+                xClose := ctrl
+                break
+            }
+        }
+        if (ogcActiveXWBC)
+            ogcActiveXWBC.Move(,, Width-30, Height-55)
+        if (xClose)
+            xClose.Move(Width/2 - 40, Height-40,,)
     }
 }
 
 HandleResponse(data, mode, promptName, input) {
-
-    global _oldClipboard
-
-    Gui_Size(thisGui, MinMax, Width, Height)
-    {
-        if MinMax = -1  ; The window has been minimized. No action needed.
-            return
-        ; Otherwise, the window has been resized or maximized. Resize the Edit control to match.
-        ;xEdit.Move(,, Width-30, Height-55)
-        ogcActiveXWBC.Move(,, Width-30, Height-55)
-        xClose.Move(Width/2 - 40,Height-40,,)
-    }
+    global _running, _oldClipboard, _activeWin, _displayResponse
 
     try {
 
@@ -307,7 +346,13 @@ HandleResponse(data, mode, promptName, input) {
             ogcActiveXWBC := MyGui.Add("ActiveX", "xm w800 h480 vIE", "Shell.Explorer")
             WB := ogcActiveXWBC.Value
             WB.Navigate("about:blank")
-            css := FileRead("style.css")
+            
+            try {
+                css := FileRead("style.css")
+            } catch {
+                css := ""  ; Use default styles if file not found
+            }
+            
             options := {css:css
                 , font_name:"Segoe UI"
                 , font_size:16
@@ -325,26 +370,28 @@ HandleResponse(data, mode, promptName, input) {
             MyGui.Show("NoActivate AutoSize Center")
             MyGui.GetPos(&x,&y,&w,&h)
             xClose.Move(w/2 - 40,,,)
-            MyGui.OnEvent("Size", Gui_Size)
+            MyGui.OnEvent("Size", ResponseGui_Size)
         } else {
             WinActivate _activeWin
             A_Clipboard := text
             send "^v"
         }
 
-        global _running := false
         Sleep 500       
         
     } finally {
-        global _running := false
+        ; Ensure cleanup happens in all code paths
+        _running := false
+        ClearWaitTooltip()
         A_Clipboard := _oldClipboard
-        global _oldClipboard := ""
+        _oldClipboard := ""
         RestoreCursor()
     }
 }
 
 InitPopupMenu() {
-    global _iMenu := Menu()
+    global _iMenu, _displayResponse
+    _iMenu := Menu()
     iMenuItemParms := Map()
 
     _iMenu.add "&`` - Display response in new window", NewWindowCheckHandler
@@ -381,8 +428,9 @@ InitPopupMenu() {
         PromptHandler(iMenuItemParms[ItemPos])
     }
     NewWindowCheckHandler(*) {
+        global _iMenu, _displayResponse
         _iMenu.ToggleCheck "&`` - Display response in new window"
-        global _displayResponse := !_displayResponse
+        _displayResponse := !_displayResponse
         _iMenu.Show()
     }
 }
@@ -432,6 +480,7 @@ OpenSettings(*) {
 }
 
 ReloadSettings(*) {
+    global _settingsCache
     TrayTip("Reload Settings", "Reloading settings...", 5)
     _settingsCache.Clear()
     InitPopupMenu()
@@ -443,20 +492,40 @@ UnescapeSetting(obj) {
 }
 
 ShowWaitTooltip() {
+    global _running, _startTime
+    
     if (_running) {
         elapsedTime := (A_TickCount - _startTime) / 1000
         ToolTip "Generating response... " Format("{:0.2f}", elapsedTime) "s"
-        SetTimer () => ShowWaitTooltip(), -50
+        SetTimer UpdateWaitTooltip, 50
     } else {
-        ToolTip()
+        ClearWaitTooltip()
     }
 }
 
+UpdateWaitTooltip() {
+    global _running, _startTime
+    
+    if (_running) {
+        elapsedTime := (A_TickCount - _startTime) / 1000
+        ToolTip "Generating response... " Format("{:0.2f}", elapsedTime) "s"
+    } else {
+        ClearWaitTooltip()
+    }
+}
+
+ClearWaitTooltip() {
+    SetTimer UpdateWaitTooltip, 0  ; Kill the timer
+    ToolTip()  ; Clear the tooltip
+}
+
 CheckSettings() {
+    global _reload_on_change, _lastModified
+    
     if (_reload_on_change and FileExist("./settings.ini")) {
         lastModified := fileGetTime("./settings.ini")
         if (lastModified != _lastModified) {
-            global _lastModified := lastModified
+            _lastModified := lastModified
             TrayTip("Settings Updated", "Restarting...", 5)
             Sleep 2000
             Reload
@@ -466,9 +535,15 @@ CheckSettings() {
 }
 
 LogDebug(msg) {
+    global _debug
+    
     if (_debug != false) {
-        now := FormatTime(A_Now, "yyyy-MM-dd HH:mm:ss")
-        logMsg := "[" . now . "] " . msg . "`n"
-        FileAppend(logMsg, "./debug.log")
+        try {
+            now := FormatTime(A_Now, "yyyy-MM-dd HH:mm:ss")
+            logMsg := "[" . now . "] " . msg . "`n"
+            FileAppend(logMsg, "./debug.log")
+        } catch {
+            ; Silently fail if unable to write to log file
+        }
     }
 }

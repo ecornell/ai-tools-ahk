@@ -12,20 +12,24 @@
 Persistent
 SendMode "Input"
 
+;# Constants
+SETTINGS_FILE := A_ScriptDir . "\settings.ini"
+SETTINGS_DEFAULT_FILE := A_ScriptDir . "\settings.ini.default"
+
 ;# init setup
-if not (FileExist("settings.ini")) {
+if not (FileExist(SETTINGS_FILE)) {
     api_key := InputBox("Enter your OpenAI API key", "AI-Tools-AHK : Setup", "W400 H100").value
     if (api_key == "") {
         MsgBox("To use this script, you need to enter an OpenAI key. Please restart the script and try again.")
         ExitApp
     }
     try {
-        if not FileExist("settings.ini.default") {
+        if not FileExist(SETTINGS_DEFAULT_FILE) {
             MsgBox("Error: settings.ini.default not found. Please reinstall the script.", , 16)
             ExitApp
         }
-        FileCopy("settings.ini.default", "settings.ini")
-        IniWrite(api_key, "./settings.ini", "settings", "default_api_key")
+        FileCopy(SETTINGS_DEFAULT_FILE, SETTINGS_FILE)
+        IniWrite(api_key, SETTINGS_FILE, "settings", "default_api_key")
     } catch as e {
         MsgBox("Error creating settings file: " e.Message, , 16)
         ExitApp
@@ -38,7 +42,7 @@ RestoreCursor()
 _running := false
 _startTime := 0
 _settingsCache := Map()
-_lastModified := fileGetTime("./settings.ini")
+_lastModified := fileGetTime(SETTINGS_FILE)
 _displayResponse := false
 _activeWin := ""
 _oldClipboard := ""
@@ -46,6 +50,7 @@ _iMenu := ""
 _iMenuItemParms := Map()
 _debug := GetSetting("settings", "debug", false)
 _reload_on_change := GetSetting("settings", "reload_on_change", false)
+_waitTooltipActive := false
 
 ;#
 CheckSettings()
@@ -113,9 +118,8 @@ PromptHandler(promptName, append := false) {
     try {
 
         if (_running) {            
-            ;MsgBox "Already running. Please wait for the current request to finish."
-            RestoreCursor()
-            Reload
+            ToolTip("Request already in progress. Please wait for it to complete.")
+            SetTimer(() => ToolTip(), -2000)  ; Clear tooltip after 2 seconds
             return
         }
 
@@ -168,16 +172,23 @@ SelectText() {
     
     _oldClipboard := A_Clipboard
 
-    if WinActive("ahk_exe WINWORD.EXE") or WinActive("ahk_exe OUTLOOK.EXE") {
-        ; In Word/Outlook select the current paragraph
-        Send "^{Up}^+{Down}+{Left}" ; Move to para start, select para, move left to not include para end
-    } else if WinActive("ahk_exe notepad++.exe") or WinActive("ahk_exe Code.exe") {
-        ; In Notepad++ select the current line
-        Send "{End}{End}+{Home}+{Home}"
-    } else if WinActive("ahk_exe notepad.exe") or WinActive("Notepad") or WinActive("ahk_class Notepad") { 
-        ; In Notepad select the current line (Windows 11 UWP or traditional Notepad)
-        Send "{End}^{Up}^+{Down}+{Left}"    
-    } 
+    ; Map of application executables to their text selection commands
+    appSelectionMap := Map(
+        "WINWORD.EXE", "^{Up}^+{Down}+{Left}",      ; Word: select current paragraph
+        "OUTLOOK.EXE", "^{Up}^+{Down}+{Left}",      ; Outlook: select current paragraph
+        "notepad++.exe", "{End}{End}+{Home}+{Home}", ; Notepad++: select current line
+        "Code.exe", "{End}{End}+{Home}+{Home}",      ; VS Code: select current line
+        "notepad.exe", "{End}^{Up}^+{Down}+{Left}"   ; Notepad: select current line
+    )
+    
+    activeProcess := WinGetProcessName("A")
+    
+    if (appSelectionMap.Has(activeProcess)) {
+        Send appSelectionMap[activeProcess]
+    } else if (WinActive("ahk_class Notepad")) {
+        ; Fallback for Windows 11 UWP Notepad
+        Send "{End}^{Up}^+{Down}+{Left}"
+    }
 
     A_Clipboard := ""
     Send "^c"
@@ -221,25 +232,35 @@ ShowWarning(message) {
 }
 
 GetSetting(section, key, defaultValue := "") {
-    global _settingsCache
+    global _settingsCache, SETTINGS_FILE
     
-    if (_settingsCache.Has(section . key . defaultValue)) {
-        return _settingsCache.Get(section . key . defaultValue)
+    cacheKey := section . "." . key
+    
+    if (_settingsCache.Has(cacheKey)) {
+        return _settingsCache.Get(cacheKey)
     } else {
         try {
-            value := IniRead("./settings.ini", section, key, defaultValue)
+            value := IniRead(SETTINGS_FILE, section, key, defaultValue)
             if IsNumber(value) {
                 value := Number(value)
             } else {
                 value := UnescapeSetting(value)
             }
-            _settingsCache.Set(section . key . defaultValue, value)
+            _settingsCache.Set(cacheKey, value)
             return value
         } catch as e {
             ; If IniRead fails, return default value
             return defaultValue
         }
     }
+}
+
+IsValidSetting(value, fieldName := "") {
+    ; Check if setting is empty, unset (matches field name), or still has default placeholder
+    if (value == "" or value == fieldName or value == "model" or value == "endpoint" or value == "default_api_key") {
+        return false
+    }
+    return true
 }
 
 GetBody(mode, promptName, prompt, input, promptEnd) {
@@ -264,6 +285,11 @@ GetBody(mode, promptName, prompt, input, promptEnd) {
     top_p := GetSetting(promptName, "top_p", top_p)
     best_of := GetSetting(promptName, "best_of", best_of)
     stop := GetSetting(promptName, "stop", stop)
+
+    ;; validate model is set and not a placeholder
+    if (!IsValidSetting(model, "model")) {
+        throw Error("Model not configured for mode '" mode "'")
+    }
 
     ;; validate numeric settings
     if (!IsNumber(max_tokens) or max_tokens <= 0) {
@@ -299,7 +325,14 @@ GetBody(mode, promptName, prompt, input, promptEnd) {
 CallAPI(mode, promptName, prompt, input, promptEnd) {
     global _running
 
-    body := GetBody(mode, promptName, prompt, input, promptEnd)
+    ; Validate configuration before making API call
+    try {
+        body := GetBody(mode, promptName, prompt, input, promptEnd)
+    } catch as e {
+        MsgBox("Error: " e.Message "`n`nPlease check your settings.ini file.", , 16)
+        return
+    }
+
     bodyJson := Jxon_dump(body, 4)
     LogDebug "bodyJson ->`n" bodyJson
 
@@ -307,16 +340,12 @@ CallAPI(mode, promptName, prompt, input, promptEnd) {
     apiKey := GetSetting(mode, "api_key", GetSetting("settings", "default_api_key"))
 
     ; Validate required settings
-    if (endpoint == "" or endpoint == "endpoint") {
+    if (!IsValidSetting(endpoint, "endpoint")) {
         MsgBox("Error: API endpoint not configured for mode '" mode "'.`n`nPlease check your settings.ini file.", , 16)
         return
     }
-    if (apiKey == "" or apiKey == "default_api_key") {
+    if (!IsValidSetting(apiKey, "default_api_key")) {
         MsgBox("Error: API key not configured.`n`nPlease check your settings.ini file.", , 16)
-        return
-    }
-    if (!body.Has("model") or body["model"] == "" or body["model"] == "model") {
-        MsgBox("Error: Model not configured for mode '" mode "'.`n`nPlease check your settings.ini file.", , 16)
         return
     }
 
@@ -398,10 +427,32 @@ HandleResponse(data, mode, promptName, input) {
         }
         
         try {
-            text := var.Get("choices")[1].Get("message").Get("content")
+            ; Defensive parsing with null checks
+            if (!var.Has("choices")) {
+                throw Error("Missing 'choices' field in API response")
+            }
+            
+            choices := var["choices"]
+            if (choices.Length = 0) {
+                throw Error("No choices returned in API response")
+            }
+            
+            if (!choices[1].Has("message")) {
+                throw Error("Missing 'message' field in response choice")
+            }
+            
+            if (!choices[1]["message"].Has("content")) {
+                throw Error("Missing 'content' field in response message")
+            }
+            
+            text := choices[1]["message"]["content"]
+            
+            if (text = "") {
+                throw Error("Content field is empty")
+            }
         } catch as e {
             LogDebug "Error: Failed to extract content from API response: " e.Message
-            MsgBox "Error: Invalid API response structure. Missing expected fields.`n`nResponse: " SubStr(data, 1, 200), , 16
+            MsgBox "Error: Invalid API response structure.`n`nDetails: " e.Message "`n`nResponse: " SubStr(data, 1, 200), , 16
             return
         }
 
@@ -458,8 +509,14 @@ HandleResponse(data, mode, promptName, input) {
                 LogDebug "Warning: Failed to write HTML to document: " e.Message
                 MsgBox "Error: Unable to display response in browser window. Falling back to clipboard paste.", , 16
                 WinActivate _activeWin
-                A_Clipboard := text
-                send "^v"
+                ; Wait for the window to become active before pasting
+                if WinWaitActive(_activeWin, , 2) {
+                    A_Clipboard := text
+                    send "^v"
+                } else {
+                    LogDebug "Warning: Failed to activate window: " _activeWin
+                    MsgBox "Error: Unable to activate target window. Please manually paste the response."
+                }
                 return
             }            
 
@@ -475,8 +532,14 @@ HandleResponse(data, mode, promptName, input) {
             MyGui.OnEvent("Size", ResponseGui_Size)
         } else {
             WinActivate _activeWin
-            A_Clipboard := text
-            send "^v"
+            ; Wait for the window to become active before pasting
+            if WinWaitActive(_activeWin, , 2) {
+                A_Clipboard := text
+                send "^v"
+            } else {
+                LogDebug "Warning: Failed to activate window: " _activeWin
+                MsgBox "Error: Unable to activate target window. Clipboard content is ready to paste manually."
+            }
         }
 
         Sleep 500       
@@ -485,14 +548,20 @@ HandleResponse(data, mode, promptName, input) {
         ; Ensure cleanup happens in all code paths
         _running := false
         ClearWaitTooltip()
-        A_Clipboard := _oldClipboard
+        
+        ; Attempt to restore clipboard, but handle failure gracefully
+        try {
+            A_Clipboard := _oldClipboard
+        } catch as e {
+            LogDebug "Warning: Failed to restore clipboard: " e.Message
+        }
         _oldClipboard := ""
         RestoreCursor()
     }
 }
 
 InitPopupMenu() {
-    global _iMenu, _displayResponse, _iMenuItemParms
+    global _iMenu, _displayResponse, _iMenuItemParms, SETTINGS_FILE
     _iMenu := Menu()
     _iMenuItemParms := Map()
 
@@ -500,7 +569,7 @@ InitPopupMenu() {
     _iMenu.Add  ; Add a separator line.
 
     try {
-        menu_items := IniRead("./settings.ini", "popup_menu")
+        menu_items := IniRead(SETTINGS_FILE, "popup_menu")
     } catch as e {
         LogDebug "Warning: popup_menu section not found in settings.ini: " e.Message
         return
@@ -606,9 +675,10 @@ UnescapeSetting(obj) {
 }
 
 ShowWaitTooltip() {
-    global _running, _startTime
+    global _running, _startTime, _waitTooltipActive
     
     if (_running) {
+        _waitTooltipActive := true
         elapsedTime := (A_TickCount - _startTime) / 1000
         ToolTip "Generating response... " Format("{:0.2f}", elapsedTime) "s"
         SetTimer UpdateWaitTooltip, 50
@@ -618,9 +688,9 @@ ShowWaitTooltip() {
 }
 
 UpdateWaitTooltip() {
-    global _running, _startTime
+    global _running, _startTime, _waitTooltipActive
     
-    if (_running) {
+    if (_running and _waitTooltipActive) {
         elapsedTime := (A_TickCount - _startTime) / 1000
         ToolTip "Generating response... " Format("{:0.2f}", elapsedTime) "s"
     } else {
@@ -629,15 +699,17 @@ UpdateWaitTooltip() {
 }
 
 ClearWaitTooltip() {
+    global _waitTooltipActive
+    _waitTooltipActive := false
     SetTimer UpdateWaitTooltip, 0  ; Kill the timer
     ToolTip()  ; Clear the tooltip
 }
 
 CheckSettings() {
-    global _reload_on_change, _lastModified
+    global _reload_on_change, _lastModified, SETTINGS_FILE
     
-    if (_reload_on_change and FileExist("./settings.ini")) {
-        lastModified := fileGetTime("./settings.ini")
+    if (_reload_on_change and FileExist(SETTINGS_FILE)) {
+        lastModified := fileGetTime(SETTINGS_FILE)
         if (lastModified != _lastModified) {
             _lastModified := lastModified
             TrayTip("Settings Updated", "Restarting...", 5)

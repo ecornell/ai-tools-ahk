@@ -63,9 +63,7 @@ OpenAI and Azure OpenAI API's are supported.
         /openai/deployments/*/chat/completions (Azure)
 
     Models:
-        gpt-3.5-turbo
-        gpt-4
-        gpt-*
+        gpt-*   (chat completion models)
 
 ## Compatibility
 Tested on Windows 10 Pro 22H2 64-bit.

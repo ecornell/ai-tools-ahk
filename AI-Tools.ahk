@@ -4,6 +4,7 @@
 
 #Requires AutoHotkey v2.0
 #singleInstance force
+#Warn All, Off  ; Suppress false positive linter warnings
 #Include "_jxon.ahk"
 #include "_Cursor.ahk"
 #Include "_MD2HTML.ahk"
@@ -58,33 +59,45 @@ InitTrayMenu()
 try {
     hotkey1 := GetSetting("settings", "hotkey_1")
     if (hotkey1 != "") {
-        HotKey hotkey1, (*) => (
-            SelectText()
-            PromptHandler(GetSetting("settings", "hotkey_1_prompt")))
+        try {
+            HotKey hotkey1, (*) => (
+                SelectText()
+                PromptHandler(GetSetting("settings", "hotkey_1_prompt")))
+        } catch as e {
+            MsgBox("Error setting hotkey_1 '" hotkey1 "': " e.Message, , 16)
+        }
     }
 } catch as e {
-    MsgBox("Error setting hotkey_1: " e.Message, , 16)
+    MsgBox("Error reading hotkey_1 setting: " e.Message, , 16)
 }
 
 try {
     hotkey2 := GetSetting("settings", "hotkey_2")
     if (hotkey2 != "") {
-        HotKey hotkey2, (*) => (
-            SelectText()
-            ShowPopupMenu())
+        try {
+            HotKey hotkey2, (*) => (
+                SelectText()
+                ShowPopupMenu())
+        } catch as e {
+            MsgBox("Error setting hotkey_2 '" hotkey2 "': " e.Message, , 16)
+        }
     }
 } catch as e {
-    MsgBox("Error setting hotkey_2: " e.Message, , 16)
+    MsgBox("Error reading hotkey_2 setting: " e.Message, , 16)
 }
 
 try {
     menuHotkey := GetSetting("settings", "menu_hotkey")
     if (menuHotkey != "") {
-        HotKey menuHotkey, (*) => (
-            ShowPopupMenu())
+        try {
+            HotKey menuHotkey, (*) => (
+                ShowPopupMenu())
+        } catch as e {
+            MsgBox("Error setting menu_hotkey '" menuHotkey "': " e.Message, , 16)
+        }
     }
 } catch as e {
-    MsgBox("Error setting menu_hotkey: " e.Message, , 16)
+    MsgBox("Error reading menu_hotkey setting: " e.Message, , 16)
 }
 
 ;###
@@ -188,14 +201,14 @@ GetTextFromClip() {
     A_Clipboard := ""
     Send "^c"
     if !ClipWait(2) {
-        throw ValueError("Clipboard operation timed out", -1)
+        throw Error("Clipboard operation timed out")
     }
     text := A_Clipboard
 
     if StrLen(text) < 1 {
-        throw ValueError("No text selected", -1)
+        throw Error("No text selected")
     } else if StrLen(text) > 16000 {
-        throw ValueError("Text is too long", -1)
+        throw Error("Text is too long")
     }
 
     return text
@@ -374,8 +387,21 @@ HandleResponse(data, mode, promptName, input) {
 
         LogDebug "data ->`n" data
 
-        var := Jxon_Load(&data)
-        text := var.Get("choices")[1].Get("message").Get("content")
+        try {
+            var := Jxon_Load(&data)
+        } catch as e {
+            LogDebug "Error: Failed to parse API response JSON: " e.Message
+            MsgBox "Error: Invalid response from API. Unable to parse JSON.`n`nResponse: " SubStr(data, 1, 200), , 16
+            return
+        }
+        
+        try {
+            text := var.Get("choices")[1].Get("message").Get("content")
+        } catch as e {
+            LogDebug "Error: Failed to extract content from API response: " e.Message
+            MsgBox "Error: Invalid API response structure. Missing expected fields.`n`nResponse: " SubStr(data, 1, 200), , 16
+            return
+        }
 
         if text == "" {
             MsgBox "No text was generated. Consider modifying your input."
@@ -397,7 +423,7 @@ HandleResponse(data, mode, promptName, input) {
             }
             text := Trim(text)
             ;# Remove enclosing quotes
-            if SubStr(text, 1, 1) == '"' and SubStr(text, -1) == '"' {
+            if StrLen(text) > 1 and SubStr(text, 1, 1) == '"' and SubStr(text, 0) == '"' {
                 text := SubStr(text, 2, -1)
             }
         }
@@ -424,7 +450,16 @@ HandleResponse(data, mode, promptName, input) {
                 , font_weight:400
                 , line_height:"1.6"} ; 1.6em - put decimals in "" for easier accuracy/handling.
             html := make_html(text, options, false)
-            WB.document.write(html)            
+            try {
+                WB.document.write(html)
+            } catch as e {
+                LogDebug "Warning: Failed to write HTML to document: " e.Message
+                MsgBox "Error: Unable to display response in browser window. Falling back to clipboard paste.", , 16
+                WinActivate _activeWin
+                A_Clipboard := text
+                send "^v"
+                return
+            }            
 
             ;xEdit := MyGui.Add("Edit", "r10 vMyEdit w800 Wrap", text)
             ;xEdit.Value .= "`n`n----`n`n" html
@@ -462,7 +497,12 @@ InitPopupMenu() {
     _iMenu.add "&`` - Display response in new window", MenuNewWindowCheckHandler
     _iMenu.Add  ; Add a separator line.
 
-    menu_items := IniRead("./settings.ini", "popup_menu")
+    try {
+        menu_items := IniRead("./settings.ini", "popup_menu")
+    } catch as e {
+        LogDebug "Warning: popup_menu section not found in settings.ini: " e.Message
+        return
+    }
 
     id := 1
     loop parse menu_items, "`n" {
@@ -484,8 +524,12 @@ InitPopupMenu() {
                 }
 
                 _iMenu.Add menu_text, MenuItemHandler
-                item_count := DllCall("GetMenuItemCount", "ptr", _iMenu.Handle)
-                _iMenuItemParms[item_count] := v_promptName
+                try {
+                    item_count := DllCall("GetMenuItemCount", "ptr", _iMenu.Handle)
+                    _iMenuItemParms[item_count] := v_promptName
+                } catch as e {
+                    LogDebug "Warning: Failed to get menu item count: " e.Message
+                }
             }
         }
     }
@@ -598,7 +642,7 @@ CheckSettings() {
             Sleep 2000
             Reload
         }
-        SetTimer () => CheckSettings(), -10000   ; Check every 10 seconds
+        SetTimer CheckSettings, -10000   ; Check every 10 seconds
     }
 }
 

@@ -181,8 +181,8 @@ response_start=" "
 ; Default mode settings
 [mode_chat_completion]
 endpoint=https://api.openai.com/v1/chat/completions
-model="gpt-4o-mini"
-max_tokens=3000
+model="gpt-4.1-mini"
+max_tokens=16384
 temperature=0.2
 top_p=1
 frequency_penalty=0.0
@@ -190,13 +190,11 @@ presence_penalty=0.0
 
 ; Azure mode settings - See: https://docs.microsoft.com/en-us/azure/openai/quickstart
 [mode_chat_completion_azure]
-endpoint=https://****.openai.azure.com/openai/deployments/gpt-35-turbo/chat/completions?api-version=2023-03-15-preview
+endpoint=https://****.openai.azure.com/openai/deployments/gpt-4.1-mini/chat/completions?api-version=2023-03-15-preview
 api_key=***
-model="gpt-3.5-turbo"
-max_tokens=2000
+model="gpt-4.1-mini"
+max_tokens=16384
 temperature=0.2
 top_p=1
-best_of=1
 frequency_penalty=0.0
 presence_penalty=0.0
-stop=["###"]

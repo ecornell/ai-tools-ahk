@@ -263,28 +263,36 @@ IsValidSetting(value, fieldName := "") {
     return true
 }
 
+GetBodyParams(mode, promptName) {
+    ; Efficiently load all parameters with mode defaults and prompt overrides
+    params := Map()
+    
+    ; Define the parameter keys to fetch
+    paramKeys := ["model", "max_tokens", "temperature", "frequency_penalty", "presence_penalty", "top_p", "best_of", "stop"]
+    
+    ; Load all parameters at once (leveraging cache)
+    for _, key in paramKeys {
+        modeVal := GetSetting(mode, key, "")
+        promptVal := GetSetting(promptName, key, "")
+        params[key] := (promptVal != "" && promptVal != key) ? promptVal : modeVal
+    }
+    
+    return params
+}
+
 GetBody(mode, promptName, prompt, input, promptEnd) {
     body := Map()
 
-    ;; load mode defaults
-    model := GetSetting(mode, "model")
-    max_tokens := GetSetting(mode, "max_tokens")
-    temperature := GetSetting(mode, "temperature")
-    frequency_penalty := GetSetting(mode, "frequency_penalty")
-    presence_penalty := GetSetting(mode, "presence_penalty")
-    top_p := GetSetting(mode, "top_p")
-    best_of := GetSetting(mode, "best_of")
-    stop := GetSetting(mode, "stop", "")
-
-    ;; load prompt overrides
-    model := GetSetting(promptName, "model", model)
-    max_tokens := GetSetting(promptName, "max_tokens", max_tokens)
-    temperature := GetSetting(promptName, "temperature", temperature)
-    frequency_penalty := GetSetting(promptName, "frequency_penalty", frequency_penalty)
-    presence_penalty := GetSetting(promptName, "presence_penalty", presence_penalty)
-    top_p := GetSetting(promptName, "top_p", top_p)
-    best_of := GetSetting(promptName, "best_of", best_of)
-    stop := GetSetting(promptName, "stop", stop)
+    ; Get all parameters efficiently in one call
+    params := GetBodyParams(mode, promptName)
+    
+    model := params["model"]
+    max_tokens := params["max_tokens"]
+    temperature := params["temperature"]
+    frequency_penalty := params["frequency_penalty"]
+    presence_penalty := params["presence_penalty"]
+    top_p := params["top_p"]
+    stop := params["stop"]
 
     ;; validate model is set and not a placeholder
     if (!IsValidSetting(model, "model")) {
@@ -301,8 +309,6 @@ GetBody(mode, promptName, prompt, input, promptEnd) {
     if (!IsNumber(top_p) or top_p < 0 or top_p > 1) {
         top_p := 1  ; sensible default
     }
-
-    ;
 
     content := prompt . input . promptEnd
     messages := []
@@ -336,8 +342,10 @@ CallAPI(mode, promptName, prompt, input, promptEnd) {
     bodyJson := Jxon_dump(body, 4)
     LogDebug "bodyJson ->`n" bodyJson
 
+    ; Pre-load all API settings at once to minimize GetSetting() calls
     endpoint := GetSetting(mode, "endpoint")
     apiKey := GetSetting(mode, "api_key", GetSetting("settings", "default_api_key"))
+    timeout := GetSetting("settings", "timeout", 120)
 
     ; Validate required settings
     if (!IsValidSetting(endpoint, "endpoint")) {
@@ -358,7 +366,7 @@ CallAPI(mode, promptName, prompt, input, promptEnd) {
         req.SetRequestHeader("api-key", apiKey) ; azure
         req.SetRequestHeader('Content-Length', StrLen(bodyJson))
         req.SetRequestHeader("If-Modified-Since", "Sat, 1 Jan 2000 00:00:00 GMT")
-        req.SetTimeouts(0, 0, 0, GetSetting("settings", "timeout", 120) * 1000) ; read, connect, send, receive
+        req.SetTimeouts(0, 0, 0, timeout * 1000) ; read, connect, send, receive
 
         req.send(bodyJson "")
         req.WaitForResponse()
@@ -681,7 +689,7 @@ ShowWaitTooltip() {
         _waitTooltipActive := true
         elapsedTime := (A_TickCount - _startTime) / 1000
         ToolTip "Generating response... " Format("{:0.2f}", elapsedTime) "s"
-        SetTimer UpdateWaitTooltip, 50
+        SetTimer UpdateWaitTooltip, 500
     } else {
         ClearWaitTooltip()
     }
@@ -716,7 +724,18 @@ CheckSettings() {
             Sleep 2000
             Reload
         }
-        SetTimer CheckSettings, -10000   ; Check every 10 seconds
+        ; Reduced polling frequency from 10s to 30s for better performance
+        SetTimer CheckSettings, -30000
+    }
+}
+
+OnFileChange(FileObj) {
+    global _reload_on_change, SETTINGS_FILE
+    
+    if (_reload_on_change and FileObj.Name ~= "settings\.ini$") {
+        TrayTip("Settings Updated", "Restarting...", 5)
+        Sleep 2000
+        Reload
     }
 }
 

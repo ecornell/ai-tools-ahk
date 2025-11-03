@@ -172,19 +172,26 @@ Jxon_Dump(obj, indent:="", lvl:=1) {
         
         is_array := (obj is Array)
         
-		lvl += 1, out := "" ; Make #Warn happy
+		lvl += 1
+		outParts := []  ; Use array for efficient concatenation
 		for k, v in obj {
 			if IsObject(k) || (k == "")
 				throw Error("Invalid object key.", -1, k ? Format("<Object at 0x{:p}>", ObjPtr(obj)) : "<blank>")
 			
 			if !is_array ;// key ; ObjGetCapacity([k], 1)
-				out .= (ObjGetCapacity([k]) ? Jxon_Dump(k) : escape_str(k)) (indent ? ": " : ":") ; token + padding
+				outParts.Push((ObjGetCapacity([k]) ? Jxon_Dump(k) : escape_str(k)) (indent ? ": " : ":"))
 			
-			out .= Jxon_Dump(v, indent, lvl) ; value
-				.  ( indent ? ",`n" . indt : "," ) ; token + indent
+			outParts.Push(Jxon_Dump(v, indent, lvl))
+			outParts.Push(indent ? ",`n" . indt : ",")
 		}
 
-		if (out != "") {
+		out := ""
+		if (outParts.Length > 0) {
+			; Join array and trim trailing comma
+			out := ""
+			for i, part in outParts
+				out .= part
+			
 			out := Trim(out, ",`n" . indent)
 			if (indent != "")
 				out := "`n" . indt . out . "`n" . SubStr(indt, StrLen(indent)+1)

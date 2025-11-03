@@ -168,6 +168,17 @@ SelectText() {
     
     _oldClipboard := A_Clipboard
 
+    if WinActive("ahk_exe WINWORD.EXE") or WinActive("ahk_exe OUTLOOK.EXE") {
+        ; In Word/Outlook select the current paragraph
+        Send "^{Up}^+{Down}+{Left}" ; Move to para start, select para, move left to not include para end
+    } else if WinActive("ahk_exe notepad++.exe") or WinActive("ahk_exe Code.exe") {
+        ; In Notepad++ select the current line
+        Send "{End}{End}+{Home}+{Home}"
+    } else if WinActive("ahk_exe notepad.exe") or WinActive("Notepad") or WinActive("ahk_class Notepad") { 
+        ; In Notepad select the current line (Windows 11 UWP or traditional Notepad)
+        Send "{End}^{Up}^+{Down}+{Left}"    
+    } 
+
     A_Clipboard := ""
     Send "^c"
     if !ClipWait(2) {
@@ -177,17 +188,8 @@ SelectText() {
     }
     text := A_Clipboard
     
-    if WinActive("ahk_exe WINWORD.EXE") or WinActive("ahk_exe OUTLOOK.EXE") {
-        ; In Word/Outlook select the current paragraph
-        Send "^{Up}^+{Down}+{Left}" ; Move to para start, select para, move left to not include para end
-    } else if WinActive("ahk_exe notepad++.exe") or WinActive("ahk_exe Code.exe") {
-        ; In Notepad++ select the current line
-        Send "{End}{End}+{Home}+{Home}"
-    } else {
-        ; Select all text if no text is selected
-        if StrLen(text) < 1 {
-            Send "^a"
-        }
+    if StrLen(text) < 1 {
+        Send "^a"
     }
     sleep 50
 }

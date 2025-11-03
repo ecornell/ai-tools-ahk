@@ -26,16 +26,20 @@ menu_hotkey     = ^!+k
 ;------------------------------------------------------------------------------
 ; Misc. Settings
 ;----------------
-; default_mode     : (Required) The default mode to use for the prompt
-; reload_on_change : (Optional:True/False:Defult True) If true, the script will
-;                     reload the settings.ini file if it is changed  
-; cursor_wait_file : (Optional) The mouse cursor when waiting for response 
-; debug            : (Optional) Enable writting debug logs to ./debug.log file
-; timeout          : (Optional) The number of seconds to wait for a response
+; default_mode      : (Required) The default mode to use for the prompt
+; reload_on_change  : (Optional:True/False:Defult True) If true, the script will
+;                      reload the settings.ini file if it is changed  
+; cursor_wait_file  : (Optional) The mouse cursor when waiting for response 
+; debug             : (Optional) Enable writting debug logs to ./debug.log file
+; timeout           : (Optional) The number of seconds to wait for API response
+; connect_timeout   : (Optional) The number of seconds to wait for connection
+; send_timeout      : (Optional) The number of seconds to wait for send
 ;------------------------------------------------------------------------------
 default_mode      = mode_chat_completion
 reload_on_change  = false
 timeout           = 120
+connect_timeout   = 10
+send_timeout      = 30
 ;cursor_wait_file = wait-1.ani
 ;debug=true
 

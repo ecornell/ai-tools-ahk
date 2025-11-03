@@ -346,6 +346,8 @@ CallAPI(mode, promptName, prompt, input, promptEnd) {
     endpoint := GetSetting(mode, "endpoint")
     apiKey := GetSetting(mode, "api_key", GetSetting("settings", "default_api_key"))
     timeout := GetSetting("settings", "timeout", 120)
+    connectTimeout := GetSetting("settings", "connect_timeout", 10)
+    sendTimeout := GetSetting("settings", "send_timeout", 30)
 
     ; Validate required settings
     if (!IsValidSetting(endpoint, "endpoint")) {
@@ -366,7 +368,8 @@ CallAPI(mode, promptName, prompt, input, promptEnd) {
         req.SetRequestHeader("api-key", apiKey) ; azure
         req.SetRequestHeader('Content-Length', StrLen(bodyJson))
         req.SetRequestHeader("If-Modified-Since", "Sat, 1 Jan 2000 00:00:00 GMT")
-        req.SetTimeouts(0, 0, 0, timeout * 1000) ; read, connect, send, receive
+        ; SetTimeouts: resolve, connect, send, receive (all in milliseconds)
+        req.SetTimeouts(5000, connectTimeout * 1000, sendTimeout * 1000, timeout * 1000)
 
         req.send(bodyJson "")
         req.WaitForResponse()

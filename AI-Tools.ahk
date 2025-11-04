@@ -190,13 +190,10 @@ SelectText() {
         Send "{End}^{Up}^+{Down}+{Left}"
     }
 
+    sleep 50
     A_Clipboard := ""
     Send "^c"
-    if !ClipWait(2) {
-        ; ClipWait timed out - clipboard operation failed
-        A_Clipboard := _oldClipboard
-        return
-    }
+    ClipWait(1,0)
     text := A_Clipboard
     
     if StrLen(text) < 1 {

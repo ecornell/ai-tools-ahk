@@ -15,6 +15,46 @@ SendMode "Input"
 ;# Constants
 SETTINGS_FILE := A_ScriptDir . "\settings.ini"
 SETTINGS_DEFAULT_FILE := A_ScriptDir . "\settings.ini.default"
+DEBUG_LOG_FILE := "./debug.log"
+
+;## Text Processing Constants
+MIN_TEXT_LENGTH := 1
+MAX_TEXT_LENGTH := 16000
+
+;## Timing Constants (milliseconds unless noted)
+CLIPBOARD_WAIT_SHORT := 1          ; seconds - for quick clipboard operations
+CLIPBOARD_WAIT_LONG := 2           ; seconds - for reliable clipboard capture
+SLEEP_AFTER_SELECTION := 50        ; ms - delay after text selection
+SLEEP_AFTER_CLIPBOARD := 50        ; ms - delay after clipboard operations
+SLEEP_BEFORE_RESTORE := 500        ; ms - delay before restoring clipboard
+TOOLTIP_CLEAR_DELAY := 2000        ; ms - auto-clear tooltip after this time
+WAIT_TOOLTIP_UPDATE_INTERVAL := 500 ; ms - update frequency for wait tooltip
+SETTINGS_CHECK_INTERVAL := 30000   ; ms - poll interval for settings file changes
+TRAY_TIP_DURATION := 5000          ; ms - duration for tray notifications
+RESTART_DELAY := 2000              ; ms - delay before restarting on settings change
+WINDOW_ACTIVATION_TIMEOUT := 2     ; seconds - timeout for WinWaitActive
+
+;## Default API Timeout Values (seconds)
+DEFAULT_API_TIMEOUT := 120         ; Total request timeout
+DEFAULT_CONNECT_TIMEOUT := 10      ; Connection establishment timeout
+DEFAULT_SEND_TIMEOUT := 30         ; Request send timeout
+HTTP_RESOLVE_TIMEOUT := 5000       ; ms - DNS resolution timeout
+
+;## Response Window UI Constants
+RESPONSE_WINDOW_WIDTH := 800
+RESPONSE_WINDOW_HEIGHT := 480
+RESPONSE_BUTTON_WIDTH := 80
+RESPONSE_GUI_MARGIN_RIGHT := 30
+RESPONSE_GUI_MARGIN_BOTTOM := 55
+RESPONSE_BUTTON_OFFSET := 40
+
+;## Default Model Parameters
+DEFAULT_MAX_TOKENS := 1000
+DEFAULT_TEMPERATURE := 0.7
+DEFAULT_TOP_P := 1.0
+
+;## Input Validation Constants
+MSGBOX_ERROR := 16                 ; Error icon for MsgBox
 
 ;# init setup
 if not (FileExist(SETTINGS_FILE)) {
@@ -25,13 +65,13 @@ if not (FileExist(SETTINGS_FILE)) {
     }
     try {
         if not FileExist(SETTINGS_DEFAULT_FILE) {
-            MsgBox("Error: settings.ini.default not found. Please reinstall the script.", , 16)
+            MsgBox("Error: settings.ini.default not found. Please reinstall the script.", , MSGBOX_ERROR)
             ExitApp
         }
         FileCopy(SETTINGS_DEFAULT_FILE, SETTINGS_FILE)
         IniWrite(api_key, SETTINGS_FILE, "settings", "default_api_key")
     } catch as e {
-        MsgBox("Error creating settings file: " e.Message, , 16)
+        MsgBox("Error creating settings file: " e.Message, , MSGBOX_ERROR)
         ExitApp
     }
 }
@@ -69,11 +109,11 @@ try {
                 SelectText()
                 PromptHandler(GetSetting("settings", "hotkey_1_prompt")))
         } catch as e {
-            MsgBox("Error setting hotkey_1 '" hotkey1 "': " e.Message, , 16)
+            MsgBox("Error setting hotkey_1 '" hotkey1 "': " e.Message, , MSGBOX_ERROR)
         }
     }
 } catch as e {
-    MsgBox("Error reading hotkey_1 setting: " e.Message, , 16)
+    MsgBox("Error reading hotkey_1 setting: " e.Message, , MSGBOX_ERROR)
 }
 
 try {
@@ -84,11 +124,11 @@ try {
                 SelectText()
                 ShowPopupMenu())
         } catch as e {
-            MsgBox("Error setting hotkey_2 '" hotkey2 "': " e.Message, , 16)
+            MsgBox("Error setting hotkey_2 '" hotkey2 "': " e.Message, , MSGBOX_ERROR)
         }
     }
 } catch as e {
-    MsgBox("Error reading hotkey_2 setting: " e.Message, , 16)
+    MsgBox("Error reading hotkey_2 setting: " e.Message, , MSGBOX_ERROR)
 }
 
 try {
@@ -98,11 +138,11 @@ try {
             HotKey menuHotkey, (*) => (
                 ShowPopupMenu())
         } catch as e {
-            MsgBox("Error setting menu_hotkey '" menuHotkey "': " e.Message, , 16)
+            MsgBox("Error setting menu_hotkey '" menuHotkey "': " e.Message, , MSGBOX_ERROR)
         }
     }
 } catch as e {
-    MsgBox("Error reading menu_hotkey setting: " e.Message, , 16)
+    MsgBox("Error reading menu_hotkey setting: " e.Message, , MSGBOX_ERROR)
 }
 
 ;###
@@ -117,9 +157,9 @@ PromptHandler(promptName, append := false) {
     
     try {
 
-        if (_running) {            
+        if (_running) {
             ToolTip("Request already in progress. Please wait for it to complete.")
-            SetTimer(() => ToolTip(), -2000)  ; Clear tooltip after 2 seconds
+            SetTimer(() => ToolTip(), -TOOLTIP_CLEAR_DELAY)
             return
         }
 
@@ -135,11 +175,11 @@ PromptHandler(promptName, append := false) {
         
         ; Validate required settings
         if (mode == "" or mode == "default_mode") {
-            MsgBox("Error: Mode not configured for prompt '" promptName "'.`n`nPlease check your settings.ini file.", , 16)
+            MsgBox("Error: Mode not configured for prompt '" promptName "'.`n`nPlease check your settings.ini file.", , MSGBOX_ERROR)
             return
         }
         if (prompt == "" or prompt == "prompt") {
-            MsgBox("Error: Prompt text not configured for '" promptName "'.`n`nPlease check your settings.ini file.", , 16)
+            MsgBox("Error: Prompt text not configured for '" promptName "'.`n`nPlease check your settings.ini file.", , MSGBOX_ERROR)
             return
         }
         
@@ -190,16 +230,16 @@ SelectText() {
         Send "{End}^{Up}^+{Down}+{Left}"
     }
 
-    sleep 50
+    sleep SLEEP_AFTER_SELECTION
     A_Clipboard := ""
     Send "^c"
-    ClipWait(1,0)
+    ClipWait(CLIPBOARD_WAIT_SHORT, 0)
     text := A_Clipboard
-    
-    if StrLen(text) < 1 {
+
+    if StrLen(text) < MIN_TEXT_LENGTH {
         Send "^a"
     }
-    sleep 50
+    sleep SLEEP_AFTER_CLIPBOARD
 }
 
 GetTextFromClip() {
@@ -210,15 +250,15 @@ GetTextFromClip() {
     
     A_Clipboard := ""
     Send "^c"
-    if !ClipWait(2) {
+    if !ClipWait(CLIPBOARD_WAIT_LONG) {
         throw Error("Clipboard operation timed out")
     }
     text := A_Clipboard
 
-    if StrLen(text) < 1 {
+    if StrLen(text) < MIN_TEXT_LENGTH {
         throw Error("No text selected")
-    } else if StrLen(text) > 16000 {
-        throw Error("Text is too long")
+    } else if StrLen(text) > MAX_TEXT_LENGTH {
+        throw Error("Text is too long (max " MAX_TEXT_LENGTH " characters)")
     }
 
     return text
@@ -298,13 +338,13 @@ GetBody(mode, promptName, prompt, input, promptEnd) {
 
     ;; validate numeric settings
     if (!IsNumber(max_tokens) or max_tokens <= 0) {
-        max_tokens := 1000  ; sensible default
+        max_tokens := DEFAULT_MAX_TOKENS
     }
     if (!IsNumber(temperature) or temperature < 0 or temperature > 2) {
-        temperature := 0.7  ; sensible default
+        temperature := DEFAULT_TEMPERATURE
     }
     if (!IsNumber(top_p) or top_p < 0 or top_p > 1) {
-        top_p := 1  ; sensible default
+        top_p := DEFAULT_TOP_P
     }
 
     content := prompt . input . promptEnd
@@ -332,7 +372,7 @@ CallAPI(mode, promptName, prompt, input, promptEnd) {
     try {
         body := GetBody(mode, promptName, prompt, input, promptEnd)
     } catch as e {
-        MsgBox("Error: " e.Message "`n`nPlease check your settings.ini file.", , 16)
+        MsgBox("Error: " e.Message "`n`nPlease check your settings.ini file.", , MSGBOX_ERROR)
         return
     }
 
@@ -342,17 +382,17 @@ CallAPI(mode, promptName, prompt, input, promptEnd) {
     ; Pre-load all API settings at once to minimize GetSetting() calls
     endpoint := GetSetting(mode, "endpoint")
     apiKey := GetSetting(mode, "api_key", GetSetting("settings", "default_api_key"))
-    timeout := GetSetting("settings", "timeout", 120)
-    connectTimeout := GetSetting("settings", "connect_timeout", 10)
-    sendTimeout := GetSetting("settings", "send_timeout", 30)
+    timeout := GetSetting("settings", "timeout", DEFAULT_API_TIMEOUT)
+    connectTimeout := GetSetting("settings", "connect_timeout", DEFAULT_CONNECT_TIMEOUT)
+    sendTimeout := GetSetting("settings", "send_timeout", DEFAULT_SEND_TIMEOUT)
 
     ; Validate required settings
     if (!IsValidSetting(endpoint, "endpoint")) {
-        MsgBox("Error: API endpoint not configured for mode '" mode "'.`n`nPlease check your settings.ini file.", , 16)
+        MsgBox("Error: API endpoint not configured for mode '" mode "'.`n`nPlease check your settings.ini file.", , MSGBOX_ERROR)
         return
     }
     if (!IsValidSetting(apiKey, "default_api_key")) {
-        MsgBox("Error: API key not configured.`n`nPlease check your settings.ini file.", , 16)
+        MsgBox("Error: API key not configured.`n`nPlease check your settings.ini file.", , MSGBOX_ERROR)
         return
     }
 
@@ -366,7 +406,7 @@ CallAPI(mode, promptName, prompt, input, promptEnd) {
         req.SetRequestHeader('Content-Length', StrLen(bodyJson))
         req.SetRequestHeader("If-Modified-Since", "Sat, 1 Jan 2000 00:00:00 GMT")
         ; SetTimeouts: resolve, connect, send, receive (all in milliseconds)
-        req.SetTimeouts(5000, connectTimeout * 1000, sendTimeout * 1000, timeout * 1000)
+        req.SetTimeouts(HTTP_RESOLVE_TIMEOUT, connectTimeout * 1000, sendTimeout * 1000, timeout * 1000)
 
         req.send(bodyJson "")
         req.WaitForResponse()
@@ -413,9 +453,9 @@ ResponseGui_Size(thisGui, MinMax, Width, Height)
             }
         }
         if (ogcActiveXWBC)
-            ogcActiveXWBC.Move(,, Width-30, Height-55)
+            ogcActiveXWBC.Move(,, Width - RESPONSE_GUI_MARGIN_RIGHT, Height - RESPONSE_GUI_MARGIN_BOTTOM)
         if (xClose)
-            xClose.Move(Width/2 - 40, Height-40,,)
+            xClose.Move(Width / 2 - RESPONSE_BUTTON_OFFSET, Height - RESPONSE_BUTTON_OFFSET,,)
     }
 }
 
@@ -494,8 +534,8 @@ HandleResponse(data, mode, promptName, input) {
             MyGui := Gui(, "Response")
             MyGui.SetFont("s13")
             MyGui.Opt("+AlwaysOnTop +Owner +Resize")  ; +Owner avoids a taskbar button.
-            
-            ogcActiveXWBC := MyGui.Add("ActiveX", "xm w800 h480 vIE", "Shell.Explorer")
+
+            ogcActiveXWBC := MyGui.Add("ActiveX", "xm w" RESPONSE_WINDOW_WIDTH " h" RESPONSE_WINDOW_HEIGHT " vIE", "Shell.Explorer")
             WB := ogcActiveXWBC.Value
             WB.Navigate("about:blank")
             
@@ -515,10 +555,10 @@ HandleResponse(data, mode, promptName, input) {
                 WB.document.write(html)
             } catch as e {
                 LogDebug "Warning: Failed to write HTML to document: " e.Message
-                MsgBox "Error: Unable to display response in browser window. Falling back to clipboard paste.", , 16
+                MsgBox "Error: Unable to display response in browser window. Falling back to clipboard paste.", , MSGBOX_ERROR
                 WinActivate _activeWin
                 ; Wait for the window to become active before pasting
-                if WinWaitActive(_activeWin, , 2) {
+                if WinWaitActive(_activeWin, , WINDOW_ACTIVATION_TIMEOUT) {
                     A_Clipboard := text
                     send "^v"
                 } else {
@@ -528,20 +568,20 @@ HandleResponse(data, mode, promptName, input) {
                 return
             }            
 
-            ;xEdit := MyGui.Add("Edit", "r10 vMyEdit w800 Wrap", text)
+            ;xEdit := MyGui.Add("Edit", "r10 vMyEdit w" RESPONSE_WINDOW_WIDTH " Wrap", text)
             ;xEdit.Value .= "`n`n----`n`n" html
 
-            xClose := MyGui.Add("Button", "Default w80", "Close")
+            xClose := MyGui.Add("Button", "Default w" RESPONSE_BUTTON_WIDTH, "Close")
             xClose.OnEvent("Click", (*) => WinClose())
 
             MyGui.Show("NoActivate AutoSize Center")
             MyGui.GetPos(&x,&y,&w,&h)
-            xClose.Move(w/2 - 40,,,)
+            xClose.Move(w / 2 - RESPONSE_BUTTON_OFFSET,,,)
             MyGui.OnEvent("Size", ResponseGui_Size)
         } else {
             WinActivate _activeWin
             ; Wait for the window to become active before pasting
-            if WinWaitActive(_activeWin, , 2) {
+            if WinWaitActive(_activeWin, , WINDOW_ACTIVATION_TIMEOUT) {
                 A_Clipboard := text
                 send "^v"
             } else {
@@ -550,8 +590,8 @@ HandleResponse(data, mode, promptName, input) {
             }
         }
 
-        Sleep 500       
-        
+        Sleep SLEEP_BEFORE_RESTORE
+
     } finally {
         ; Ensure cleanup happens in all code paths
         _running := false
@@ -653,11 +693,11 @@ TrayAddStartWithWindows(tray) {
         if FileExist(_sww_shortcut) {
             fileDelete(_sww_shortcut)
             tray.Uncheck("Start with Windows")
-            trayTip("Start With Windows", "Shortcut removed", 5)
+            trayTip("Start With Windows", "Shortcut removed", TRAY_TIP_DURATION)
         } else {
             fileCreateShortcut(a_scriptFullPath, _sww_shortcut)
             tray.Check("Start with Windows")
-            trayTip("Start With Windows", "Shortcut created", 5)
+            trayTip("Start With Windows", "Shortcut created", TRAY_TIP_DURATION)
         }
     }
 }
@@ -672,7 +712,7 @@ OpenSettings(*) {
 
 ReloadSettings(*) {
     global _settingsCache
-    TrayTip("Reload Settings", "Reloading settings...", 5)
+    TrayTip("Reload Settings", "Reloading settings...", TRAY_TIP_DURATION)
     _settingsCache.Clear()
     InitPopupMenu()
 }
@@ -684,12 +724,12 @@ UnescapeSetting(obj) {
 
 ShowWaitTooltip() {
     global _running, _startTime, _waitTooltipActive
-    
+
     if (_running) {
         _waitTooltipActive := true
         elapsedTime := (A_TickCount - _startTime) / 1000
         ToolTip "Generating response... " Format("{:0.2f}", elapsedTime) "s"
-        SetTimer UpdateWaitTooltip, 500
+        SetTimer UpdateWaitTooltip, WAIT_TOOLTIP_UPDATE_INTERVAL
     } else {
         ClearWaitTooltip()
     }
@@ -715,38 +755,37 @@ ClearWaitTooltip() {
 
 CheckSettings() {
     global _reload_on_change, _lastModified, SETTINGS_FILE
-    
+
     if (_reload_on_change and FileExist(SETTINGS_FILE)) {
         lastModified := fileGetTime(SETTINGS_FILE)
         if (lastModified != _lastModified) {
             _lastModified := lastModified
-            TrayTip("Settings Updated", "Restarting...", 5)
-            Sleep 2000
+            TrayTip("Settings Updated", "Restarting...", TRAY_TIP_DURATION)
+            Sleep RESTART_DELAY
             Reload
         }
-        ; Reduced polling frequency from 10s to 30s for better performance
-        SetTimer CheckSettings, -30000
+        SetTimer CheckSettings, -SETTINGS_CHECK_INTERVAL
     }
 }
 
 OnFileChange(FileObj) {
     global _reload_on_change, SETTINGS_FILE
-    
+
     if (_reload_on_change and FileObj.Name ~= "settings\.ini$") {
-        TrayTip("Settings Updated", "Restarting...", 5)
-        Sleep 2000
+        TrayTip("Settings Updated", "Restarting...", TRAY_TIP_DURATION)
+        Sleep RESTART_DELAY
         Reload
     }
 }
 
 LogDebug(msg) {
     global _debug
-    
+
     if (_debug != false) {
         try {
             now := FormatTime(A_Now, "yyyy-MM-dd HH:mm:ss")
             logMsg := "[" . now . "] " . msg . "`n"
-            FileAppend(logMsg, "./debug.log")
+            FileAppend(logMsg, DEBUG_LOG_FILE)
         } catch {
             ; Silently fail if unable to write to log file
         }

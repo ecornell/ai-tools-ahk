@@ -215,12 +215,8 @@ presence_penalty=0.0
 [selection_process]
 winword.exe=^{Up}^+{Down}+{Left}
 outlook.exe=^{Up}^+{Down}+{Left}
-notepad++.exe={End}{End}+{Home}+{Home}
-code.exe={End}{End}+{Home}+{Home}
 notepad.exe={End}^{Up}^+{Down}+{Left}
 
 [selection_class]
-Notepad={End}^{Up}^+{Down}+{Left}
 
 [selection_title]
-SiYuan={Home}+{End}

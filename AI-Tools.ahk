@@ -285,10 +285,10 @@ SelectText() {
         ; Try selecting to end then back to start of line (may work in many editors)
         matchedBy := "fallback"
         matchedKey := "quick-line"
-        matchedCmd := "{Home}+{End}"
-        Send "{Home}"
+        matchedCmd := "{End}+{Home}"
+        Send "{End}"
         Sleep 30
-        Send "+{End}"
+        Send "+{Home}"
         Sleep 30
     }
 

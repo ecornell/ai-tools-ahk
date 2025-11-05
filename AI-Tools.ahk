@@ -211,23 +211,85 @@ SelectText() {
     global _oldClipboard
     
     _oldClipboard := A_Clipboard
+    processSelection := Map()
+    classSelection := Map()
 
-    ; Map of application executables to their text selection commands
-    appSelectionMap := Map(
-        "WINWORD.EXE", "^{Up}^+{Down}+{Left}",      ; Word: select current paragraph
-        "OUTLOOK.EXE", "^{Up}^+{Down}+{Left}",      ; Outlook: select current paragraph
-        "notepad++.exe", "{End}{End}+{Home}+{Home}", ; Notepad++: select current line
-        "Code.exe", "{End}{End}+{Home}+{Home}",      ; VS Code: select current line
-        "notepad.exe", "{End}^{Up}^+{Down}+{Left}"   ; Notepad: select current line
-    )
-    
+    ; Read from INI sections: selection_process, selection_class, selection_title
+    iniProc := LoadSelectionMapping("selection_process")
+    for k, v in iniProc {
+        processSelection[StrLower(k)] := v
+    }
+    iniClass := LoadSelectionMapping("selection_class")
+    for k, v in iniClass {
+        classSelection[k] := v
+    }
+    iniTitle := LoadSelectionMapping("selection_title")
+    titleSelection := Map()
+    for k, v in iniTitle {
+        ; store search key lowercased for case-insensitive substring match
+        titleSelection[StrLower(k)] := v
+    }
+
     activeProcess := WinGetProcessName("A")
-    
-    if (appSelectionMap.Has(activeProcess)) {
-        Send appSelectionMap[activeProcess]
-    } else if (WinActive("ahk_class Notepad")) {
-        ; Fallback for Windows 11 UWP Notepad
-        Send "{End}^{Up}^+{Down}+{Left}"
+    activeProcessLower := (activeProcess ? StrLower(activeProcess) : "")
+    activeClass := WinGetClass("A")
+    activeTitle := WinGetTitle("A")
+
+    selected := false
+    matchedBy := "none"    ; one of: process, class, title, fallback, none
+    matchedKey := ""
+    matchedCmd := ""
+
+    ; Try process-specific selection first (case-insensitive)
+    if (activeProcessLower != "" && processSelection.Has(activeProcessLower)) {
+        matchedBy := "process"
+        matchedKey := activeProcessLower
+        matchedCmd := processSelection[activeProcessLower]
+        Send matchedCmd
+        selected := true
+    }
+
+    ; Then try window-class based selection
+    if (!selected) {
+        for className, command in classSelection {
+            if (WinActive("ahk_class " . className)) {
+                matchedBy := "class"
+                matchedKey := className
+                matchedCmd := command
+                Send command
+                selected := true
+                break
+            }
+        }
+    }
+
+    ; Next try title-based selection (case-insensitive substring match)
+        if (!selected && !MapIsEmpty(titleSelection)) {
+        activeTitleLower := (activeTitle ? StrLower(activeTitle) : "")
+        if (activeTitleLower != "") {
+            for searchKey, command in titleSelection {
+                if (InStr(activeTitleLower, StrLower(searchKey))) {
+                    matchedBy := "title"
+                    matchedKey := searchKey
+                    matchedCmd := command
+                    Send command
+                    selected := true
+                    break
+                }
+            }
+        }
+    }
+
+    ; Minimal fallback: attempt a quick line selection, otherwise we'll fall back to Ctrl+A later
+    if (!selected) {
+        ; Try selecting to end then back to start of line (may work in many editors)
+        matchedBy := "fallback"
+        matchedKey := "quick-line"
+        matchedCmd := "+{End}+{Home}"
+        Send "+{End}"
+        Sleep 30
+        Send "+{Home}"
+        Sleep 30
     }
 
     sleep SLEEP_AFTER_SELECTION
@@ -240,6 +302,13 @@ SelectText() {
         Send "^a"
     }
     sleep SLEEP_AFTER_CLIPBOARD
+
+    ; Log the selection decision (which mapping was used and contextual info)
+    try {
+        LogDebug(Format("Selection decision -> process: {}, class: {}, title: {}, matchedBy: {}, matchedKey: {}, matchedCmd: {}, textLen: {}", activeProcess, activeClass, activeTitle, matchedBy, matchedKey, matchedCmd, StrLen(text)))
+    } catch {
+        ; ignore logging errors
+    }
 }
 
 GetTextFromClip() {
@@ -263,6 +332,8 @@ GetTextFromClip() {
 
     return text
 }
+
+;###
 
 ShowWarning(message) {
     MsgBox message
@@ -720,6 +791,71 @@ ReloadSettings(*) {
 UnescapeSetting(obj) {
     obj := StrReplace(obj, "\n", "`n")
     return obj
+}
+
+LoadSelectionMapping(sectionName) {
+    ; Returns a Map of key -> value for the given INI section by parsing the file.
+    global SETTINGS_FILE, _settingsCache
+
+    cacheKey := "selection." . sectionName
+    if (_settingsCache.Has(cacheKey)) {
+        return _settingsCache.Get(cacheKey)
+    }
+
+    result := Map()
+    try {
+        content := FileRead(SETTINGS_FILE)
+    } catch {
+        ; cache empty result to avoid repeated file reads
+        _settingsCache.Set(cacheKey, result)
+        return result
+    }
+
+    inSection := false
+    loop parse content, "`n"
+    {
+        rawLine := A_LoopField
+        line := Trim(rawLine, " `t`r")
+        if (line == "")
+            continue
+        ; Section header? (use regex to check starts with [ and ends with ])
+        if (line ~= "^\[.*\]$") {
+            sec := SubStr(line, 2, -1)
+            if (sec = sectionName) {
+                inSection := true
+                continue
+            } else if (inSection) {
+                break
+            } else {
+                continue
+            }
+        }
+
+        if (!inSection)
+            continue
+
+        if (SubStr(line, 1, 1) == ";" or SubStr(line, 1, 1) == "#")
+            continue
+
+        pos := InStr(line, "=")
+        if (pos) {
+            key := Trim(SubStr(line, 1, pos - 1))
+            val := Trim(SubStr(line, pos + 1))
+            val := UnescapeSetting(val)
+            result[key] := val
+        }
+    }
+
+    _settingsCache.Set(cacheKey, result)
+    return result
+}
+
+MapIsEmpty(m) {
+    if (!IsObject(m))
+        return true
+    for k, v in m
+        return false
+    return true
 }
 
 ShowWaitTooltip() {

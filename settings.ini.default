@@ -202,3 +202,25 @@ temperature=0.2
 top_p=1
 frequency_penalty=0.0
 presence_penalty=0.0
+
+;------------------------------------------------------------------------------
+; Selection mappings (user-editable)
+;------------------
+; selection_process : map of process executable name -> Send string
+;                     keys matched case-insensitively
+; selection_class   : map of ahk_class name -> Send string
+; selection_title   : map of window title substring -> Send string
+; Example values match the built-in fallbacks used by the script.
+;------------------------------------------------------------------------------
+[selection_process]
+winword.exe=^{Up}^+{Down}+{Left}
+outlook.exe=^{Up}^+{Down}+{Left}
+notepad++.exe={End}{End}+{Home}+{Home}
+code.exe={End}{End}+{Home}+{Home}
+notepad.exe={End}^{Up}^+{Down}+{Left}
+
+[selection_class]
+Notepad={End}^{Up}^+{Down}+{Left}
+
+[selection_title]
+SiYuan={Home}+{End}

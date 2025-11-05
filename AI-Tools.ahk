@@ -22,23 +22,23 @@ MIN_TEXT_LENGTH := 1
 MAX_TEXT_LENGTH := 16000
 
 ;## Timing Constants (milliseconds unless noted)
-CLIPBOARD_WAIT_SHORT := 1          ; seconds - for quick clipboard operations
-CLIPBOARD_WAIT_LONG := 2           ; seconds - for reliable clipboard capture
-SLEEP_AFTER_SELECTION := 50        ; ms - delay after text selection
-SLEEP_AFTER_CLIPBOARD := 50        ; ms - delay after clipboard operations
-SLEEP_BEFORE_RESTORE := 500        ; ms - delay before restoring clipboard
-TOOLTIP_CLEAR_DELAY := 2000        ; ms - auto-clear tooltip after this time
+CLIPBOARD_WAIT_SHORT := 1           ; seconds - for quick clipboard operations
+CLIPBOARD_WAIT_LONG := 2            ; seconds - for reliable clipboard capture
+SLEEP_AFTER_SELECTION := 50         ; ms - delay after text selection
+SLEEP_AFTER_CLIPBOARD := 50         ; ms - delay after clipboard operations
+SLEEP_BEFORE_RESTORE := 500         ; ms - delay before restoring clipboard
+TOOLTIP_CLEAR_DELAY := 2000         ; ms - auto-clear tooltip after this time
 WAIT_TOOLTIP_UPDATE_INTERVAL := 500 ; ms - update frequency for wait tooltip
-SETTINGS_CHECK_INTERVAL := 30000   ; ms - poll interval for settings file changes
-TRAY_TIP_DURATION := 5000          ; ms - duration for tray notifications
-RESTART_DELAY := 2000              ; ms - delay before restarting on settings change
-WINDOW_ACTIVATION_TIMEOUT := 2     ; seconds - timeout for WinWaitActive
+SETTINGS_CHECK_INTERVAL := 30000    ; ms - poll interval for settings file changes
+TRAY_TIP_DURATION := 5000           ; ms - duration for tray notifications
+RESTART_DELAY := 2000               ; ms - delay before restarting on settings change
+WINDOW_ACTIVATION_TIMEOUT := 2      ; seconds - timeout for WinWaitActive
 
 ;## Default API Timeout Values (seconds)
-DEFAULT_API_TIMEOUT := 120         ; Total request timeout
-DEFAULT_CONNECT_TIMEOUT := 10      ; Connection establishment timeout
-DEFAULT_SEND_TIMEOUT := 30         ; Request send timeout
-HTTP_RESOLVE_TIMEOUT := 5000       ; ms - DNS resolution timeout
+DEFAULT_API_TIMEOUT := 120          ; Total request timeout
+DEFAULT_CONNECT_TIMEOUT := 10       ; Connection establishment timeout
+DEFAULT_SEND_TIMEOUT := 30          ; Request send timeout
+HTTP_RESOLVE_TIMEOUT := 5000        ; ms - DNS resolution timeout
 
 ;## Response Window UI Constants
 RESPONSE_WINDOW_WIDTH := 800
@@ -194,7 +194,7 @@ PromptHandler(promptName, append := false) {
         CallAPI(mode, promptName, prompt, input, promptEnd)
 
     } catch as err {
-        MsgBox Format("{1}: {2}.`n`nFile:`t{3}`nLine:`t{4}`nWhat:`t{5}", type(err), err.Message, err.File, err.Line, err.What), , 16
+        MsgBox Format("{1}: {2}.`n`nFile:`t{3}`nLine:`t{4}`nWhat:`t{5}", type(err), err.Message, err.File, err.Line, err.What), , MSGBOX_ERROR
     } finally {
         ; Ensure cleanup happens in all error paths
         if (_running) {
@@ -483,18 +483,18 @@ CallAPI(mode, promptName, prompt, input, promptEnd) {
         req.WaitForResponse()
 
         if (req.status == 0) {
-            MsgBox "Error: Unable to connect to the API. Please check your internet connection and try again.", , 16
+            MsgBox "Error: Unable to connect to the API. Please check your internet connection and try again.", , MSGBOX_ERROR
             return
         } else if (req.status == 200) { ; OK.
             data := req.responseText
             HandleResponse(data, mode, promptName, input)
         } else {
-            MsgBox "Error: Status " req.status " - " req.responseText, , 16
+            MsgBox "Error: Status " req.status " - " req.responseText, , MSGBOX_ERROR
             return
         }
     } catch as e {
         MsgBox "Error: " "Exception thrown!`n`nwhat: " e.what "`nfile: " e.file 
-        . "`nline: " e.line "`nmessage: " e.message "`nextra: " e.extra, , 16
+        . "`nline: " e.line "`nmessage: " e.message "`nextra: " e.extra, , MSGBOX_ERROR
         return
     } finally {
         ; Clean up COM object
@@ -541,7 +541,7 @@ HandleResponse(data, mode, promptName, input) {
             var := Jxon_Load(&data)
         } catch as e {
             LogDebug "Error: Failed to parse API response JSON: " e.Message
-            MsgBox "Error: Invalid response from API. Unable to parse JSON.`n`nResponse: " SubStr(data, 1, 200), , 16
+            MsgBox "Error: Invalid response from API. Unable to parse JSON.`n`nResponse: " SubStr(data, 1, 200), , MSGBOX_ERROR
             return
         }
         
@@ -571,7 +571,7 @@ HandleResponse(data, mode, promptName, input) {
             }
         } catch as e {
             LogDebug "Error: Failed to extract content from API response: " e.Message
-            MsgBox "Error: Invalid API response structure.`n`nDetails: " e.Message "`n`nResponse: " SubStr(data, 1, 200), , 16
+            MsgBox "Error: Invalid API response structure.`n`nDetails: " e.Message "`n`nResponse: " SubStr(data, 1, 200), , MSGBOX_ERROR
             return
         }
 

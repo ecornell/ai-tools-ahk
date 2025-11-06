@@ -66,7 +66,9 @@ OpenAI and Azure OpenAI API's are supported.
         gpt-*   (chat completion models)
 
 ## Compatibility
-Tested on Windows 10 Pro 22H2 64-bit.
+Tested on:
+* Windows 10 Pro 22H2 64-bit
+* Windows 11 Pro 25H2 
 
 ## Credits
 

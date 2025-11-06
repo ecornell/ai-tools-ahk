@@ -7,9 +7,9 @@
 #Warn All, Off  ; Suppress false positive linter warnings
 
 ;# Include helper libraries
-#Include "_jxon.ahk"
-#include "_Cursor.ahk"
-#Include "_MD2HTML.ahk"
+#Include "lib/_jxon.ahk"
+#include "lib/_Cursor.ahk"
+#Include "lib/_MD2HTML.ahk"
 
 ;# Include application modules
 #Include "lib/Utils.ahk"

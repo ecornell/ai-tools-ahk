@@ -33,7 +33,7 @@ jobs:
           $command = "$cwd\_autohotkey\Compiler\Ahk2Exe.exe /silent verbose "
           $command += '/in "$cwd\AI-Tools.ahk" '
           $command += '/out "$cwd\AI-Tools.exe" '
-          $command += '/icon "$cwd\icon.ico" '
+          $command += '/icon "$cwd\res\icon.ico" '
           $command += '/base "$cwd\_autohotkey\AutoHotkey64.exe" '
           Invoke-Expression $command
 

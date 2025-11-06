@@ -272,7 +272,7 @@ HandleResponse(data, mode, promptName, input) {
             WB.Navigate("about:blank")
 
             try {
-                css := FileRead("style.css")
+                css := FileRead("res/style.css")
             } catch {
                 css := ""  ; Use default styles if file not found
             }

@@ -71,7 +71,7 @@ GetBody(mode, promptName, prompt, input, promptEnd) {
     return body
 }
 
-;# Make API call to OpenAI/Azure
+;# Make API call to OpenAI/Azure with retry logic
 CallAPI(mode, promptName, prompt, input, promptEnd) {
     global _running
 
@@ -103,44 +103,90 @@ CallAPI(mode, promptName, prompt, input, promptEnd) {
         return
     }
 
-    req := ComObject("Msxml2.ServerXMLHTTP")
+    ; Retry configuration
+    maxRetries := 4
+    retryDelays := [2000, 4000, 8000, 16000]  ; Exponential backoff in milliseconds
+    attempt := 0
+    lastError := ""
+    lastStatus := 0
 
-    try {
-        req.open("POST", endpoint, true)
-        req.SetRequestHeader("Content-Type", "application/json")
-        req.SetRequestHeader("Authorization", "Bearer " apiKey) ; openai
-        req.SetRequestHeader("api-key", apiKey) ; azure
-        req.SetRequestHeader('Content-Length', StrLen(bodyJson))
-        req.SetRequestHeader("If-Modified-Since", "Sat, 1 Jan 2000 00:00:00 GMT")
-        ; SetTimeouts: resolve, connect, send, receive (all in milliseconds)
-        req.SetTimeouts(HTTP_RESOLVE_TIMEOUT, connectTimeout * 1000, sendTimeout * 1000, timeout * 1000)
+    ; Retry loop for network failures
+    while (attempt <= maxRetries) {
+        req := ComObject("Msxml2.ServerXMLHTTP")
 
-        req.send(bodyJson "")
-        req.WaitForResponse()
+        try {
+            req.open("POST", endpoint, true)
+            req.SetRequestHeader("Content-Type", "application/json")
+            req.SetRequestHeader("Authorization", "Bearer " apiKey) ; openai
+            req.SetRequestHeader("api-key", apiKey) ; azure
+            req.SetRequestHeader('Content-Length', StrLen(bodyJson))
+            req.SetRequestHeader("If-Modified-Since", "Sat, 1 Jan 2000 00:00:00 GMT")
+            ; SetTimeouts: resolve, connect, send, receive (all in milliseconds)
+            req.SetTimeouts(HTTP_RESOLVE_TIMEOUT, connectTimeout * 1000, sendTimeout * 1000, timeout * 1000)
 
-        if (req.status == 0) {
-            MsgBox "Error: Unable to connect to the API. Please check your internet connection and try again.", , 16
-            return
-        } else if (req.status == 200) { ; OK.
-            data := req.responseText
-            HandleResponse(data, mode, promptName, input)
-        } else {
-            MsgBox "Error: Status " req.status " - " req.responseText, , 16
-            return
+            req.send(bodyJson "")
+            req.WaitForResponse()
+
+            if (req.status == 0) {
+                ; Network failure - eligible for retry
+                lastStatus := 0
+                lastError := "Unable to connect to the API"
+
+                if (attempt < maxRetries) {
+                    retryDelay := retryDelays[attempt + 1]
+                    ToolTip("Network error. Retrying in " (retryDelay / 1000) " seconds... (Attempt " (attempt + 2) "/" (maxRetries + 1) ")")
+                    Sleep retryDelay
+                    ToolTip()  ; Clear tooltip
+                    attempt++
+                    req := ""  ; Clean up before retry
+                    continue
+                }
+            } else if (req.status == 200) {
+                ; Success!
+                data := req.responseText
+                req := ""  ; Clean up COM object
+                HandleResponse(data, mode, promptName, input)
+                return
+            } else {
+                ; HTTP error (400, 500, etc.) - don't retry
+                MsgBox "Error: Status " req.status " - " req.responseText, , 16
+                req := ""
+                return
+            }
+        } catch as e {
+            ; Connection exception - eligible for retry
+            lastError := "Exception: " e.message
+
+            if (attempt < maxRetries) {
+                retryDelay := retryDelays[attempt + 1]
+                ToolTip("Connection error. Retrying in " (retryDelay / 1000) " seconds... (Attempt " (attempt + 2) "/" (maxRetries + 1) ")")
+                Sleep retryDelay
+                ToolTip()  ; Clear tooltip
+                attempt++
+                req := ""  ; Clean up before retry
+                continue
+            }
+        } finally {
+            ; Always ensure COM object cleanup
+            if (IsSet(req) && req != "") {
+                req := ""
+            }
         }
-    } catch as e {
-        MsgBox "Error: " "Exception thrown!`n`nwhat: " e.what "`nfile: " e.file
-        . "`nline: " e.line "`nmessage: " e.message "`nextra: " e.extra, , 16
-        return
-    } finally {
-        ; Clean up COM object
-        req := ""
-        ; Ensure cleanup happens in all paths if HandleResponse didn't complete
-        if (_running) {
-            _running := false
-            ClearWaitTooltip()
-            RestoreCursor()
-        }
+
+        ; If we get here, we've exhausted retries
+        break
+    }
+
+    ; All retries exhausted - show final error
+    if (lastStatus == 0 || lastError != "") {
+        MsgBox "Error: Unable to connect to the API after " (maxRetries + 1) " attempts.`n`nLast error: " lastError "`n`nPlease check your internet connection and try again.", , 16
+    }
+
+    ; Ensure cleanup happens in all paths if HandleResponse didn't complete
+    if (_running) {
+        _running := false
+        ClearWaitTooltip()
+        RestoreCursor()
     }
 }
 

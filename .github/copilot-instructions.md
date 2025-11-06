@@ -2,17 +2,24 @@
 
 Purpose: quick orientation for an automated coding agent (or reviewer) to be productive in this Windows AutoHotkey v2 project.
 
-This repository is a compact, single-script tool. Key facts below let an AI agent make safe, useful changes quickly.
+This repository is a modular AutoHotkey application with clean separation of concerns. Key facts below let an AI agent make safe, useful changes quickly.
 
 Entry points
-- `AI-Tools.ahk` — the single authoritative script. The file header requires AutoHotkey v2; most behavior lives here.
-- `_jxon.ahk`, `_Cursor.ahk`, `_MD2HTML.ahk` — helper libraries (JSON, cursor management, markdown→HTML rendering).
+- `AI-Tools.ahk` — the main entry point (143 lines). Handles initialization, constants, and hotkey registration.
+- `lib/` directory — modular application code:
+  - `Config.ahk` — Settings management (GetSetting, LoadSelectionMapping, CheckSettings)
+  - `Selection.ahk` — Text selection logic (SelectText, GetTextFromClip)
+  - `API.ahk` — OpenAI/Azure API client (PromptHandler, CallAPI, GetBody, HandleResponse)
+  - `UI.ahk` — User interface (menus, GUI, tray)
+  - `Utils.ahk` — Utility functions (logging, tooltips, helpers)
+- `_jxon.ahk`, `_Cursor.ahk`, `_MD2HTML.ahk` — external helper libraries (JSON, cursor management, markdown→HTML rendering).
 - `settings.ini` / `settings.ini.default` — runtime configuration. `settings.ini.default` seeds new installs and documents prompt schemas.
 
 Big-picture architecture
-- Single-process script binds global hotkeys (configured in `settings.ini`) to handlers in `AI-Tools.ahk`.
-- Typical flow: hotkey → `SelectText()` (process/class/title mappings) → `GetTextFromClip()` → `CallAPI()` (via `GetBody()`/`GetBodyParams()`) → network using `Msxml2.ServerXMLHTTP` → `HandleResponse()` (paste or GUI ActiveX render).
-- Selection mappings: `selection_process`, `selection_class`, `selection_title` are parsed by `LoadSelectionMapping()` and may contain send-keys sequences (e.g. editors needing specific selection keys).
+- Modular design with clear separation of concerns across lib/ files.
+- Main script (`AI-Tools.ahk`) includes all modules and sets up hotkeys.
+- Typical flow: hotkey → `SelectText()` (lib/Selection.ahk - process/class/title mappings) → `GetTextFromClip()` → `PromptHandler()` → `CallAPI()` (lib/API.ahk - via `GetBody()`/`GetBodyParams()`) → network using `Msxml2.ServerXMLHTTP` → `HandleResponse()` (paste or GUI ActiveX render).
+- Selection mappings: `selection_process`, `selection_class`, `selection_title` are parsed by `LoadSelectionMapping()` (lib/Config.ahk) and may contain send-keys sequences (e.g. editors needing specific selection keys).
 
 Implementation notes & conventions (do this when editing)
 - Use `GetSetting(section,key,default)` for INI reads (it caches results in `_settingsCache` and normalizes types).
@@ -37,7 +44,12 @@ Integration points & limitations
 - There are no automated tests in the repo; changes that affect network shape, timeouts, or clipboard behavior should be validated manually.
 
 Files to inspect for examples
-- `AI-Tools.ahk` — main logic: hotkeys, selection, API call, response handling.
+- `AI-Tools.ahk` — main entry point: initialization, constants, hotkey registration.
+- `lib/Config.ahk` — settings management and INI parsing.
+- `lib/Selection.ahk` — text selection logic with process/class/title mappings.
+- `lib/API.ahk` — API client implementation, request/response handling.
+- `lib/UI.ahk` — menu and GUI management.
+- `lib/Utils.ahk` — logging, tooltips, and helper utilities.
 - `settings.ini.default` — canonical example of prompt/mode configuration.
 - `_jxon.ahk` — JSON helpers used for request/response handling.
 - `style.css` — CSS used by the response HTML renderer.

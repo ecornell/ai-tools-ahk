@@ -54,7 +54,7 @@ send_timeout      = 30
 ;------------------------------------------------------------------------------
 [popup_menu]
 prompt_spelling
-prompt_writting
+prompt_writing
 prompt_shorter
 prompt_longer
 prompt_tone_professional
@@ -100,8 +100,8 @@ prompt_end="\nOutput: "
 menu_text="Fix spelling && grammar"
 temperature=0
 
-[prompt_writting]
-prompt="Improve the writting for clarity and conciseness and correct the spelling (American English) and grammar of the following:\n\n"
+[prompt_writing]
+prompt="Improve the writing for clarity and conciseness and correct the spelling (American English) and grammar of the following:\n\n"
 menu_text="Rewrite for clarity"
 
 [prompt_shorter]

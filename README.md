@@ -73,7 +73,7 @@ This tool supports multiple AI API providers:
 
 ### Google Gemini
 - **Endpoint**: `https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent`
-- **Models**: gemini-2.5-flash, gemini-1.5-pro, gemini-1.5-flash
+- **Models**: gemini-2.5-flash, gemini-2.5-flash-lite, etc.
 - **API Key**: [https://aistudio.google.com/app/apikey](https://aistudio.google.com/app/apikey)
 - **Documentation**: [Gemini API Docs](https://ai.google.dev/gemini-api/docs)
 
@@ -83,14 +83,13 @@ To switch providers, edit the `default_mode` setting in `settings.ini`:
 
 ```ini
 [settings]
-default_mode = mode_chat_completion      ; OpenAI (default)
+default_mode = mode_chat_completion          ; OpenAI (default)
 ; default_mode = mode_chat_completion_azure  ; Azure OpenAI
-; default_mode = mode_gemini               ; Google Gemini
+; default_mode = mode_gemini                 ; Google Gemini
 ```
 
 Individual prompts can override the mode by setting `mode=mode_gemini` in their prompt section.
 
-**Note**: Gemini supports an optional `thinking_budget` parameter to enable extended reasoning mode. Uncomment the `thinking_budget` line in the `[mode_gemini]` section to enable this feature.
 
 ## Compatibility
 Tested on:

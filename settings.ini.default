@@ -62,6 +62,7 @@ prompt_longer
 prompt_tone_professional
 prompt_simplify
 -
+prompt_translate
 prompt_proof
 prompt_summarize
 prompt_explain
@@ -122,6 +123,11 @@ menu_text="Change Tone - Professional"
 prompt="Simplify the following:\n\n"
 menu_text="Simplify language"
 
+[prompt_translate]
+prompt="Translate the following to English:\n\n"
+menu_text="Translate"
+response_type=popup 
+
 [prompt_proof]
 prompt_system="I want you act as a English proofreader. I will provide you texts and I would like you to review them for any spelling, grammar, or punctuation errors. Once you have finished reviewing the text, provide me with a very detailed bullet list of suggestions and modifications to make and reasons why."
 prompt="My text is the following: "
@@ -129,6 +135,7 @@ menu_text="Proofread"
 replace_selected=False
 response_start="\n\n"
 temperature=0
+response_type=popup 
 
 [prompt_summarize]
 prompt="Summarize the following:\n\n"
@@ -136,6 +143,7 @@ menu_text="Summarize"
 replace_selected=False
 response_start="\n"
 temperature=0
+response_type=popup 
 
 [prompt_explain]
 prompt="Explain the following:\n\n"
@@ -143,6 +151,7 @@ menu_text="Explain this"
 replace_selected=False
 response_start="\n"
 temperature=0
+response_type=popup 
 
 [prompt_items]
 prompt="Summarize as a statement and identify any action items as a bullet list:\n\n"
@@ -150,6 +159,7 @@ menu_text="Find action items"
 replace_selected=False
 response_start="\n"
 temperature=0
+response_type=popup 
 
 [prompt_code_optimize]
 prompt_system="You are an assistant to a software engineer. You will be given a code snippet and you will be asked to optimize it for time and space complexity."

@@ -44,6 +44,7 @@ jobs:
           Remove-Item "$cwd\_autohotkey" -Recurse
           Remove-Item  "$cwd\.github" -Recurse
           Remove-Item  "$cwd\.gitignore"
+          Remove-Item  "$cwd\CLAUDE.md"
           $compress = @{
             Path = "$cwd\*.*"
             CompressionLevel = "Fastest"

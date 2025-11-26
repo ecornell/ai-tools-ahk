@@ -203,7 +203,29 @@ top_p=1
 frequency_penalty=0.0
 presence_penalty=0.0
 
-; Google Gemini mode settings - See: https://ai.google.dev/gemini-api/docs
+;------------------------------------------------------------------------------
+; Google Gemini Modes
+;-------
+; [mode_<name>]     : (Required) The name of the mode
+; endpoint          : (Required) The OpenAI API endpoint
+; model             : (Required) The OpenAI model to use
+; max_tokens        : (Optional) The maximum number of tokens to generate
+; temperature       : (Optional) The temperature of the model
+; top_p             : (Optional) The top_p of the model
+; stop              : (Optional) The stop of the model
+; thinking_budget   : (Optional) The thinking_budget of the model
+; --
+; Note:
+; - Get your API key from: https://aistudio.google.com/app/apikey
+; - Available models: gemini-2.5-flash, ect...
+; - The {model} placeholder in endpoint will be replaced automatically
+; - Gemini does not support frequency_penalty or presence_penalty
+; - Authentication uses x-goog-api-key header (not Bearer token)
+; - API version: v1beta (stable)
+; - Optional: thinking_budget enables thinking mode (e.g., 8192 tokens)
+;------------------------------------------------------------------------------
+
+; Default Google Gemini mode settings - See: https://ai.google.dev/gemini-api/docs
 [mode_gemini]
 endpoint=https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent
 api_key=
@@ -212,18 +234,6 @@ max_tokens=8192
 temperature=0.2
 top_p=1
 ;thinking_budget=8192
-
-;------------------------------------------------------------------------------
-; Google Gemini API Configuration Notes
-;----------------------------------------
-; 1. Get your API key from: https://aistudio.google.com/app/apikey
-; 2. Available models: gemini-2.5-flash, gemini-1.5-pro, gemini-1.5-flash
-; 3. The {model} placeholder in endpoint will be replaced automatically
-; 4. Gemini does not support frequency_penalty or presence_penalty
-; 5. Authentication uses x-goog-api-key header (not Bearer token)
-; 6. API version: v1beta (stable)
-; 7. Optional: thinking_budget enables thinking mode (e.g., 8192 tokens)
-;------------------------------------------------------------------------------
 
 ;------------------------------------------------------------------------------
 ; Selection mappings (user-editable)

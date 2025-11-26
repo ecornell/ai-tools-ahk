@@ -67,18 +67,79 @@ MSGBOX_ERROR := 16                 ; Error icon for MsgBox
 
 ;# First-run setup
 if not (FileExist(SETTINGS_FILE)) {
-    api_key := InputBox("Enter your OpenAI API key", "AI-Tools-AHK : Setup", "W400 H100").value
-    if (api_key == "") {
-        MsgBox("To use this script, you need to enter an OpenAI key. Please restart the script and try again.")
+    ; Create GUI for provider selection
+    providerGui := Gui("+AlwaysOnTop", "AI-Tools-AHK : Setup")
+    providerGui.SetFont("s10")
+    providerGui.Add("Text", "x20 y20 w360", "Choose your AI provider:")
+
+    ; Add buttons for each provider
+    openaiBtn := providerGui.Add("Button", "x20 y60 w360 h50", "OpenAI")
+    geminiBtn := providerGui.Add("Button", "x20 y120 w360 h50", "Google Gemini")
+    cancelBtn := providerGui.Add("Button", "x20 y180 w360 h40", "Cancel")
+
+    ; Store selection in GUI object
+    providerGui.selectedProvider := ""
+
+    openaiBtn.OnEvent("Click", (*) => (providerGui.selectedProvider := "openai", providerGui.Hide()))
+    geminiBtn.OnEvent("Click", (*) => (providerGui.selectedProvider := "gemini", providerGui.Hide()))
+    cancelBtn.OnEvent("Click", (*) => (providerGui.selectedProvider := "cancel", providerGui.Hide()))
+    providerGui.OnEvent("Close", (*) => (providerGui.selectedProvider := "cancel", providerGui.Hide()))
+    providerGui.OnEvent("Escape", (*) => (providerGui.selectedProvider := "cancel", providerGui.Hide()))
+
+    providerGui.Show("w400 h240")
+
+    ; Wait for user to make a selection
+    while (providerGui.selectedProvider == "") {
+        Sleep 100
+    }
+
+    selectedProvider := providerGui.selectedProvider
+    providerGui.Destroy()
+
+    if (selectedProvider == "cancel" or selectedProvider == "") {
         ExitApp
     }
+
+    ; Determine provider and prompt for appropriate API key
+    if (selectedProvider == "openai") {
+        ; OpenAI selected
+        api_key := InputBox("Enter your OpenAI API key`n`nGet your key from: https://platform.openai.com/account", "AI-Tools-AHK : Setup - OpenAI", "W500 H150").value
+        if (api_key == "") {
+            MsgBox("To use this script, you need to enter an API key. Please restart the script and try again.")
+            ExitApp
+        }
+        defaultMode := "mode_chat_completion"
+        settingsSection := "settings"
+        apiKeyField := "default_api_key"
+    } else {
+        ; Google Gemini selected
+        api_key := InputBox("Enter your Google Gemini API key`n`nGet your key from: https://aistudio.google.com/app/apikey", "AI-Tools-AHK : Setup - Google Gemini", "W500 H150").value
+        if (api_key == "") {
+            MsgBox("To use this script, you need to enter an API key. Please restart the script and try again.")
+            ExitApp
+        }
+        defaultMode := "mode_gemini"
+        settingsSection := "mode_gemini"
+        apiKeyField := "api_key"
+    }
+
     try {
         if not FileExist(SETTINGS_DEFAULT_FILE) {
             MsgBox("Error: settings.ini.default not found. Please reinstall the script.", , MSGBOX_ERROR)
             ExitApp
         }
         FileCopy(SETTINGS_DEFAULT_FILE, SETTINGS_FILE)
-        IniWrite(api_key, SETTINGS_FILE, "settings", "default_api_key")
+
+        ; Write the API key to the appropriate section
+        if (settingsSection == "settings") {
+            ; For OpenAI, write to default_api_key in settings section
+            IniWrite(api_key, SETTINGS_FILE, settingsSection, apiKeyField)
+        } else {
+            ; For Gemini, write to api_key in mode_gemini section
+            IniWrite(api_key, SETTINGS_FILE, settingsSection, apiKeyField)
+            ; Also set default_mode to use Gemini
+            IniWrite(defaultMode, SETTINGS_FILE, "settings", "default_mode")
+        }
     } catch as e {
         MsgBox("Error creating settings file: " e.Message, , MSGBOX_ERROR)
         ExitApp

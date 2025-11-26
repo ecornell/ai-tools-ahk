@@ -200,7 +200,6 @@ CallAPI(mode, promptName, prompt, input, promptEnd) {
     }
     ; Use appropriate field name for validation based on which API provider is being used
     apiKeyFieldName := (provider == "gemini") ? "default_api_key_gemini" : "default_api_key"
-    LogDebug "API key field name: " apiKeyFieldName " | API key value: " apiKey
     if (!IsValidSetting(apiKey, apiKeyFieldName)) {
         MsgBox("Error: API key not configured.`n`nPlease check your settings.ini file.", , MSGBOX_ERROR)
         return

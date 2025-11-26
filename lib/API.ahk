@@ -4,6 +4,19 @@
 ;# Globals (shared with main script)
 global _running := false
 
+;# Detect API provider based on endpoint URL
+DetectProvider(endpoint) {
+    endpoint := StrLower(endpoint)
+
+    if (InStr(endpoint, "generativelanguage.googleapis.com")) {
+        return "gemini"
+    } else if (InStr(endpoint, "openai.azure.com")) {
+        return "azure"
+    } else {
+        return "openai"
+    }
+}
+
 ;# Get model parameters with mode defaults and prompt overrides
 GetBodyParams(mode, promptName) {
     ; Efficiently load all parameters with mode defaults and prompt overrides
@@ -71,13 +84,97 @@ GetBody(mode, promptName, prompt, input, promptEnd) {
     return body
 }
 
+;# Build request body for Gemini API call
+GetBodyGemini(mode, promptName, prompt, input, promptEnd) {
+    body := Map()
+    params := GetBodyParams(mode, promptName)
+
+    model := params["model"]
+    max_tokens := params["max_tokens"]
+    temperature := params["temperature"]
+    top_p := params["top_p"]
+    stop := params["stop"]
+
+    ;; validate model
+    if (!IsValidSetting(model, "model")) {
+        throw Error("Model not configured for mode '" mode "'")
+    }
+
+    ;; validate numeric settings with defaults
+    if (!IsNumber(max_tokens) or max_tokens <= 0) {
+        max_tokens := DEFAULT_MAX_TOKENS
+    }
+    if (!IsNumber(temperature) or temperature < 0 or temperature > 2) {
+        temperature := DEFAULT_TEMPERATURE
+    }
+    if (!IsNumber(top_p) or top_p < 0 or top_p > 1) {
+        top_p := DEFAULT_TOP_P
+    }
+
+    ; Build content (merge system prompt into user content for Gemini)
+    content := ""
+    prompt_system := GetSetting(promptName, "prompt_system", "")
+    if (prompt_system != "") {
+        content := prompt_system . "`n`n"
+    }
+    content .= prompt . input . promptEnd
+
+    ; Build Gemini request structure
+    parts := []
+    parts.Push(Map("text", content))
+
+    contents := []
+    contents.Push(Map("parts", parts))
+
+    body["contents"] := contents
+
+    ; Add generation config with camelCase naming
+    generationConfig := Map()
+    generationConfig["temperature"] := temperature
+    generationConfig["topP"] := top_p
+    generationConfig["maxOutputTokens"] := max_tokens
+
+    ; Add stop sequences if configured
+    if (IsSet(stop) && stop != "") {
+        if (Type(stop) == "String") {
+            stopSequences := [stop]
+        } else {
+            stopSequences := stop
+        }
+        generationConfig["stopSequences"] := stopSequences
+    }
+
+    body["generationConfig"] := generationConfig
+
+    ; Add thinking mode support if configured
+    thinkingBudget := GetSetting(promptName, "thinking_budget", GetSetting(mode, "thinking_budget", ""))
+    if (thinkingBudget != "" && IsNumber(thinkingBudget)) {
+        thinkingConfig := Map()
+        thinkingConfig["thinkingBudget"] := thinkingBudget
+        body["thinkingConfig"] := thinkingConfig
+    }
+
+    return body
+}
+
 ;# Make API call to OpenAI/Azure with retry logic
 CallAPI(mode, promptName, prompt, input, promptEnd) {
     global _running
 
     ; Validate configuration before making API call
     try {
-        body := GetBody(mode, promptName, prompt, input, promptEnd)
+        ; Pre-load endpoint first to detect provider
+        endpoint := GetSetting(mode, "endpoint")
+
+        ; Detect provider type
+        provider := DetectProvider(endpoint)
+
+        ; Build request body based on provider
+        if (provider == "gemini") {
+            body := GetBodyGemini(mode, promptName, prompt, input, promptEnd)
+        } else {
+            body := GetBody(mode, promptName, prompt, input, promptEnd)
+        }
     } catch as e {
         MsgBox("Error: " e.Message "`n`nPlease check your settings.ini file.", , MSGBOX_ERROR)
         return
@@ -86,8 +183,7 @@ CallAPI(mode, promptName, prompt, input, promptEnd) {
     bodyJson := Jxon_dump(body, 4)
     LogDebug "bodyJson ->`n" bodyJson
 
-    ; Pre-load all API settings at once to minimize GetSetting() calls
-    endpoint := GetSetting(mode, "endpoint")
+    ; Load remaining API settings
     apiKey := GetSetting(mode, "api_key", GetSetting("settings", "default_api_key"))
     timeout := GetSetting("settings", "timeout", DEFAULT_API_TIMEOUT)
     connectTimeout := GetSetting("settings", "connect_timeout", DEFAULT_CONNECT_TIMEOUT)
@@ -115,10 +211,25 @@ CallAPI(mode, promptName, prompt, input, promptEnd) {
         req := ComObject("Msxml2.ServerXMLHTTP")
 
         try {
-            req.open("POST", endpoint, true)
+            ; Build endpoint with model for Gemini
+            apiEndpoint := endpoint
+            if (provider == "gemini") {
+                modelName := GetSetting(mode, "model")
+                modelName := StrReplace(modelName, '"', '')
+                apiEndpoint := StrReplace(endpoint, "{model}", modelName)
+            }
+
+            req.open("POST", apiEndpoint, true)
             req.SetRequestHeader("Content-Type", "application/json")
-            req.SetRequestHeader("Authorization", "Bearer " apiKey) ; openai
-            req.SetRequestHeader("api-key", apiKey) ; azure
+
+            ; Set authentication headers based on provider
+            if (provider == "gemini") {
+                req.SetRequestHeader("x-goog-api-key", apiKey)
+            } else {
+                req.SetRequestHeader("Authorization", "Bearer " apiKey) ; openai
+                req.SetRequestHeader("api-key", apiKey) ; azure
+            }
+
             req.SetRequestHeader('Content-Length', StrLen(bodyJson))
             req.SetRequestHeader("If-Modified-Since", "Sat, 1 Jan 2000 00:00:00 GMT")
             ; SetTimeouts: resolve, connect, send, receive (all in milliseconds)
@@ -145,7 +256,7 @@ CallAPI(mode, promptName, prompt, input, promptEnd) {
                 ; Success!
                 data := req.responseText
                 req := ""  ; Clean up COM object
-                HandleResponse(data, mode, promptName, input)
+                HandleResponse(data, mode, promptName, input, provider)
                 return
             } else {
                 ; HTTP error (400, 500, etc.) - don't retry
@@ -191,7 +302,7 @@ CallAPI(mode, promptName, prompt, input, promptEnd) {
 }
 
 ;# Handle API response and display result
-HandleResponse(data, mode, promptName, input) {
+HandleResponse(data, mode, promptName, input, provider := "openai") {
     global _running, _oldClipboard, _activeWin, _displayResponse
 
     try {
@@ -207,28 +318,64 @@ HandleResponse(data, mode, promptName, input) {
         }
 
         try {
-            ; Defensive parsing with null checks
-            if (!var.Has("choices")) {
-                throw Error("Missing 'choices' field in API response")
-            }
+            ; Parse response based on provider
+            if (provider == "gemini") {
+                ; Gemini: candidates[0].content.parts[0].text
+                if (!var.Has("candidates")) {
+                    throw Error("Missing 'candidates' field in Gemini API response")
+                }
 
-            choices := var["choices"]
-            if (choices.Length = 0) {
-                throw Error("No choices returned in API response")
-            }
+                candidates := var["candidates"]
+                if (candidates.Length = 0) {
+                    throw Error("No candidates returned in Gemini API response")
+                }
 
-            if (!choices[1].Has("message")) {
-                throw Error("Missing 'message' field in response choice")
-            }
+                if (!candidates[1].Has("content")) {
+                    throw Error("Missing 'content' field in Gemini response")
+                }
 
-            if (!choices[1]["message"].Has("content")) {
-                throw Error("Missing 'content' field in response message")
-            }
+                if (!candidates[1]["content"].Has("parts")) {
+                    throw Error("Missing 'parts' field in Gemini response")
+                }
 
-            text := choices[1]["message"]["content"]
+                parts := candidates[1]["content"]["parts"]
+                if (parts.Length = 0) {
+                    throw Error("No parts in Gemini response")
+                }
 
-            if (text = "") {
-                throw Error("Content field is empty")
+                if (!parts[1].Has("text")) {
+                    throw Error("Missing 'text' field in Gemini response")
+                }
+
+                text := parts[1]["text"]
+
+                if (text = "") {
+                    throw Error("Text field is empty in Gemini response")
+                }
+            } else {
+                ; OpenAI/Azure: choices[0].message.content
+                if (!var.Has("choices")) {
+                    throw Error("Missing 'choices' field in API response")
+                }
+
+                choices := var["choices"]
+                if (choices.Length = 0) {
+                    throw Error("No choices returned in API response")
+                }
+
+                if (!choices[1].Has("message")) {
+                    throw Error("Missing 'message' field in response choice")
+                }
+
+                if (!choices[1]["message"].Has("content")) {
+                    throw Error("Missing 'content' field in response message")
+                }
+
+                text := choices[1]["message"]["content"]
+
+                if (text = "") {
+                    throw Error("Content field is empty")
+                }
             }
         } catch as e {
             LogDebug "Error: Failed to extract content from API response: " e.Message

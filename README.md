@@ -11,9 +11,9 @@
 - [Credits](#credits)  
 &nbsp;
 
-## What's this?  
+## What's this?
 
-This is a Windows tool that enables running custom OpenAI prompts on text in any window using global hotkeys.
+This is a Windows tool that enables running custom AI prompts on text in any window using global hotkeys.
 
 i.e. Low-friction AI text editing ("spicy autocomplete") anywhere in Windows.
 
@@ -27,9 +27,11 @@ Almost anywhere in Windows where you can enter text.
 
 To get started, first download and extract the [latest release](https://github.com/ecornell/ai-tools-ahk/releases) .zip file. If you already have [AutoHotkey](https://www.autohotkey.com) installed, simply run `AI-Tools.ahk`. If not, use the .exe version, which allows you to use the script without having AutoHotkey installed. The script doesn't install anything and is portable, so you can run it from any location. 
 
-When you run the script for the first time, it will create a new `settings.ini` file in the same directory. This file contains the script's settings, which you can edit to change the hotkeys or add your own prompts. 
+When you run the script for the first time, it will create a new `settings.ini` file in the same directory. This file contains the script's settings, which you can edit to change the hotkeys or add your own prompts.
 
-Additionally, the script will prompt you to enter your OpenAI API key. If you don't have one yet, you can obtain an API key from [OpenAI](https://platform.openai.com/).
+Additionally, the script will prompt you to enter your API key. You can obtain an API key from:
+- **OpenAI**: [https://platform.openai.com/](https://platform.openai.com/)
+- **Google Gemini**: [https://aistudio.google.com/app/apikey](https://aistudio.google.com/app/apikey)
 
 
 
@@ -55,18 +57,44 @@ To have the script start when windows boots up, select "Start With Windows" from
 &nbsp;
 
 
-## Supported OpenAI APIs and Models
-OpenAI and Azure OpenAI API's are supported.
+## Supported API Providers
 
-    API:
-        /v1/chat/completions (Default - OpenAI)  
-        /openai/deployments/*/chat/completions (Azure)
+This tool supports multiple AI API providers:
 
-    Models:
-        gpt-*   (chat completion models)
+### OpenAI
+- **Endpoint**: `https://api.openai.com/v1/chat/completions`
+- **Models**: gpt-4, gpt-4-turbo, gpt-3.5-turbo, etc.
+- **API Key**: [https://platform.openai.com/](https://platform.openai.com/)
+
+### Azure OpenAI
+- **Endpoint**: `https://[resource].openai.azure.com/openai/deployments/[model]/chat/completions`
+- **Models**: Your deployed models
+- **Documentation**: [Azure OpenAI Quickstart](https://docs.microsoft.com/en-us/azure/openai/quickstart)
+
+### Google Gemini
+- **Endpoint**: `https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent`
+- **Models**: gemini-2.5-flash, gemini-2.5-flash-lite, etc.
+- **API Key**: [https://aistudio.google.com/app/apikey](https://aistudio.google.com/app/apikey)
+- **Documentation**: [Gemini API Docs](https://ai.google.dev/gemini-api/docs)
+
+### Configuration
+
+To switch providers, edit the `default_mode` setting in `settings.ini`:
+
+```ini
+[settings]
+default_mode = mode_chat_completion          ; OpenAI (default)
+; default_mode = mode_chat_completion_azure  ; Azure OpenAI
+; default_mode = mode_gemini                 ; Google Gemini
+```
+
+Individual prompts can override the mode by setting `mode=mode_gemini` in their prompt section.
+
 
 ## Compatibility
-Tested on Windows 10 Pro 22H2 64-bit.
+Tested on:
+* Windows 10 Pro 22H2 64-bit
+* Windows 11 Pro 25H2 
 
 ## Credits
 

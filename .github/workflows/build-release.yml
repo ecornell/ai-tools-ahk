@@ -16,11 +16,11 @@ jobs:
         run: |
           $cwd = (Get-Item .).FullName;
           
-          Invoke-WebRequest "https://github.com/AutoHotkey/AutoHotkey/releases/download/v2.0.2/AutoHotkey_2.0.2.zip" -OutFile "$cwd\ahk-v2.zip";
+          Invoke-WebRequest "https://github.com/AutoHotkey/AutoHotkey/releases/download/v2.0.19/AutoHotkey_2.0.19.zip" -OutFile "$cwd\ahk-v2.zip";
           Expand-Archive -Path "$cwd\ahk-v2.zip" -DestinationPath "$cwd\_autohotkey\" -Force;
           Remove-Item -Path "$cwd\ahk-v2.zip" -Force
 
-          Invoke-WebRequest "https://github.com/AutoHotkey/Ahk2Exe/releases/download/Ahk2Exe1.1.36.02e1/Ahk2Exe1.1.36.02e.zip" -OutFile "$cwd\Ahk2Exe.zip";
+          Invoke-WebRequest "https://github.com/AutoHotkey/Ahk2Exe/releases/download/Ahk2Exe1.1.37.02a0a/Ahk2Exe1.1.37.02a0.zip" -OutFile "$cwd\Ahk2Exe.zip";
           Expand-Archive -Path "$cwd\Ahk2Exe.zip" -DestinationPath "$cwd\_autohotkey\Compiler" -Force;
           Remove-Item -Path "$cwd\Ahk2Exe.zip" -Force
           
@@ -33,7 +33,7 @@ jobs:
           $command = "$cwd\_autohotkey\Compiler\Ahk2Exe.exe /silent verbose "
           $command += '/in "$cwd\AI-Tools.ahk" '
           $command += '/out "$cwd\AI-Tools.exe" '
-          $command += '/icon "$cwd\icon.ico" '
+          $command += '/icon "$cwd\res\icon.ico" '
           $command += '/base "$cwd\_autohotkey\AutoHotkey64.exe" '
           Invoke-Expression $command
 
@@ -44,6 +44,7 @@ jobs:
           Remove-Item "$cwd\_autohotkey" -Recurse
           Remove-Item  "$cwd\.github" -Recurse
           Remove-Item  "$cwd\.gitignore"
+          Remove-Item  "$cwd\CLAUDE.md"
           $compress = @{
             Path = "$cwd\*.*"
             CompressionLevel = "Fastest"

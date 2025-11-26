@@ -1,10 +1,12 @@
 ;------------------------------------------------------------------------------
-; Default Settings 
+; Default Settings
 ;------------------
-; default_api_key  : OpenAI API key - (https://platform.openai.com/account)
+; default_api_key         : OpenAI API key - (https://platform.openai.com/account)
+; default_api_key_gemini  : Google Gemini API key - (https://aistudio.google.com/app/apikey)
 ;------------------------------------------------------------------------------
 [settings]
 default_api_key=
+default_api_key_gemini=
 
 ;------------------------------------------------------------------------------
 ; Hotkeys  
@@ -40,7 +42,7 @@ reload_on_change  = false
 timeout           = 120
 connect_timeout   = 10
 send_timeout      = 30
-;cursor_wait_file = wait-1.ani
+;cursor_wait_file = res/wait-1.ani
 ;debug=true
 
 ;------------------------------------------------------------------------------
@@ -54,12 +56,13 @@ send_timeout      = 30
 ;------------------------------------------------------------------------------
 [popup_menu]
 prompt_spelling
-prompt_writting
+prompt_writing
 prompt_shorter
 prompt_longer
 prompt_tone_professional
 prompt_simplify
 -
+prompt_translate
 prompt_proof
 prompt_summarize
 prompt_explain
@@ -100,8 +103,8 @@ prompt_end="\nOutput: "
 menu_text="Fix spelling && grammar"
 temperature=0
 
-[prompt_writting]
-prompt="Improve the writting for clarity and conciseness and correct the spelling (American English) and grammar of the following:\n\n"
+[prompt_writing]
+prompt="Improve the writing for clarity and conciseness, and correct the spelling (American English) and grammar of the following.:\n\n"
 menu_text="Rewrite for clarity"
 
 [prompt_shorter]
@@ -120,6 +123,11 @@ menu_text="Change Tone - Professional"
 prompt="Simplify the following:\n\n"
 menu_text="Simplify language"
 
+[prompt_translate]
+prompt="Translate the following to English:\n\n"
+menu_text="Translate"
+response_type=popup 
+
 [prompt_proof]
 prompt_system="I want you act as a English proofreader. I will provide you texts and I would like you to review them for any spelling, grammar, or punctuation errors. Once you have finished reviewing the text, provide me with a very detailed bullet list of suggestions and modifications to make and reasons why."
 prompt="My text is the following: "
@@ -127,6 +135,7 @@ menu_text="Proofread"
 replace_selected=False
 response_start="\n\n"
 temperature=0
+response_type=popup 
 
 [prompt_summarize]
 prompt="Summarize the following:\n\n"
@@ -134,6 +143,7 @@ menu_text="Summarize"
 replace_selected=False
 response_start="\n"
 temperature=0
+response_type=popup 
 
 [prompt_explain]
 prompt="Explain the following:\n\n"
@@ -141,6 +151,7 @@ menu_text="Explain this"
 replace_selected=False
 response_start="\n"
 temperature=0
+response_type=popup 
 
 [prompt_items]
 prompt="Summarize as a statement and identify any action items as a bullet list:\n\n"
@@ -148,6 +159,7 @@ menu_text="Find action items"
 replace_selected=False
 response_start="\n"
 temperature=0
+response_type=popup 
 
 [prompt_code_optimize]
 prompt_system="You are an assistant to a software engineer. You will be given a code snippet and you will be asked to optimize it for time and space complexity."
@@ -166,11 +178,12 @@ menu_text="Space& - Continue writting"
 response_start=" "
 
 ;------------------------------------------------------------------------------
-; Modes
+; OpenAIModes
 ;-------
 ; [mode_<name>]     : (Required) The name of the mode
 ; endpoint          : (Required) The OpenAI API endpoint
 ; model             : (Required) The OpenAI model to use
+; api_key           : (Optional) The API key, if not in settings
 ; max_tokens        : (Optional) The maximum number of tokens to generate
 ; temperature       : (Optional) The temperature of the model
 ; top_p             : (Optional) The top_p of the model
@@ -202,6 +215,46 @@ temperature=0.2
 top_p=1
 frequency_penalty=0.0
 presence_penalty=0.0
+
+;------------------------------------------------------------------------------
+; Google Gemini Modes
+;-------
+; [mode_<name>]     : (Required) The name of the mode
+; endpoint          : (Required) The OpenAI API endpoint
+; model             : (Required) The OpenAI model to use
+; api_key           : (Optional) The Google Gemini API key, if not in settings
+; max_tokens        : (Optional) The maximum number of tokens to generate
+; temperature       : (Optional) The temperature of the model
+; top_p             : (Optional) The top_p of the model
+; stop              : (Optional) The stop of the model
+; thinking_budget   : (Optional) The thinking_budget of the model
+; --
+; Note:
+; - Get your API key from: https://aistudio.google.com/app/apikey
+; - Available models: gemini-2.5-flash, etc.
+; - The {model} placeholder in endpoint will be replaced automatically
+; - Gemini does not support frequency_penalty or presence_penalty
+; - Authentication uses x-goog-api-key header (not Bearer token)
+; - API version: v1beta (stable)
+; - Optional: thinking_budget enables thinking mode (e.g., 8192 tokens)
+;------------------------------------------------------------------------------
+
+; Default Google Gemini mode settings - See: https://ai.google.dev/gemini-api/docs
+[mode_gemini]
+endpoint=https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent
+model="gemini-2.5-flash-lite"
+max_tokens=8192
+temperature=0.2
+top_p=1
+;thinking_budget=8192
+
+[mode_gemini_2_5_flash]
+endpoint=https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent
+model="gemini-2.5-flash"
+max_tokens=8192
+temperature=0.2
+top_p=1
+;thinking_budget=8192
 
 ;------------------------------------------------------------------------------
 ; Selection mappings (user-editable)

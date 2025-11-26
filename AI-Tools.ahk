@@ -119,8 +119,8 @@ if not (FileExist(SETTINGS_FILE)) {
             ExitApp
         }
         defaultMode := "mode_gemini"
-        settingsSection := "mode_gemini"
-        apiKeyField := "api_key"
+        settingsSection := "settings"
+        apiKeyField := "default_api_key_gemini"
     }
 
     try {
@@ -130,16 +130,11 @@ if not (FileExist(SETTINGS_FILE)) {
         }
         FileCopy(SETTINGS_DEFAULT_FILE, SETTINGS_FILE)
 
-        ; Write the API key to the appropriate section
-        if (settingsSection == "settings") {
-            ; For OpenAI, write to default_api_key in settings section
-            IniWrite(api_key, SETTINGS_FILE, settingsSection, apiKeyField)
-        } else {
-            ; For Gemini, write to api_key in mode_gemini section
-            IniWrite(api_key, SETTINGS_FILE, settingsSection, apiKeyField)
-            ; Also set default_mode to use Gemini
-            IniWrite(defaultMode, SETTINGS_FILE, "settings", "default_mode")
-        }
+        ; Write the API key to the appropriate field
+        IniWrite(api_key, SETTINGS_FILE, settingsSection, apiKeyField)
+
+        ; Set the default_mode based on provider selection
+        IniWrite(defaultMode, SETTINGS_FILE, "settings", "default_mode")
     } catch as e {
         MsgBox("Error creating settings file: " e.Message, , MSGBOX_ERROR)
         ExitApp

@@ -1,10 +1,12 @@
 ;------------------------------------------------------------------------------
-; Default Settings 
+; Default Settings
 ;------------------
-; default_api_key  : OpenAI API key - (https://platform.openai.com/account)
+; default_api_key         : OpenAI API key - (https://platform.openai.com/account)
+; default_api_key_gemini  : Google Gemini API key - (https://aistudio.google.com/app/apikey)
 ;------------------------------------------------------------------------------
 [settings]
 default_api_key=
+default_api_key_gemini=
 
 ;------------------------------------------------------------------------------
 ; Hotkeys  
@@ -171,6 +173,7 @@ response_start=" "
 ; [mode_<name>]     : (Required) The name of the mode
 ; endpoint          : (Required) The OpenAI API endpoint
 ; model             : (Required) The OpenAI model to use
+; api_key           : (Optional) The API key, if not in settings
 ; max_tokens        : (Optional) The maximum number of tokens to generate
 ; temperature       : (Optional) The temperature of the model
 ; top_p             : (Optional) The top_p of the model
@@ -209,6 +212,7 @@ presence_penalty=0.0
 ; [mode_<name>]     : (Required) The name of the mode
 ; endpoint          : (Required) The OpenAI API endpoint
 ; model             : (Required) The OpenAI model to use
+; api_key           : (Optional) The Google Gemini API key, if not in settings
 ; max_tokens        : (Optional) The maximum number of tokens to generate
 ; temperature       : (Optional) The temperature of the model
 ; top_p             : (Optional) The top_p of the model
@@ -228,8 +232,15 @@ presence_penalty=0.0
 ; Default Google Gemini mode settings - See: https://ai.google.dev/gemini-api/docs
 [mode_gemini]
 endpoint=https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent
-api_key=
 model="gemini-2.5-flash"
+max_tokens=8192
+temperature=0.2
+top_p=1
+;thinking_budget=8192
+
+[mode_gemini_2_5_flash_lite]
+endpoint=https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent
+model="gemini-2.5-flash-lite"
 max_tokens=8192
 temperature=0.2
 top_p=1

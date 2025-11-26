@@ -44,7 +44,7 @@ GetSetting(section, key, defaultValue := "") {
 ;# Validate that a setting is not empty or a placeholder
 IsValidSetting(value, fieldName := "") {
     ; Check if setting is empty, unset (matches field name), or still has default placeholder
-    if (value == "" or value == fieldName or value == "model" or value == "endpoint" or value == "default_api_key") {
+    if (value == "" or value == fieldName or value == "model" or value == "endpoint" or value == "default_api_key" or value == "default_api_key_gemini") {
         return false
     }
     return true

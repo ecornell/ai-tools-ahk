@@ -184,7 +184,11 @@ CallAPI(mode, promptName, prompt, input, promptEnd) {
     LogDebug "bodyJson ->`n" bodyJson
 
     ; Load remaining API settings
-    apiKey := GetSetting(mode, "api_key", GetSetting("settings", "default_api_key"))
+    ; Use default_api_key_gemini for Gemini provider, otherwise use default_api_key
+    LogDebug "Provider detected: " provider
+    defaultApiKey := (provider == "gemini") ? GetSetting("settings", "default_api_key_gemini") : GetSetting("settings", "default_api_key")
+    apiKey := GetSetting(mode, "api_key", defaultApiKey)
+    LogDebug "API key length: " StrLen(apiKey)
     timeout := GetSetting("settings", "timeout", DEFAULT_API_TIMEOUT)
     connectTimeout := GetSetting("settings", "connect_timeout", DEFAULT_CONNECT_TIMEOUT)
     sendTimeout := GetSetting("settings", "send_timeout", DEFAULT_SEND_TIMEOUT)
@@ -194,7 +198,10 @@ CallAPI(mode, promptName, prompt, input, promptEnd) {
         MsgBox("Error: API endpoint not configured for mode '" mode "'.`n`nPlease check your settings.ini file.", , MSGBOX_ERROR)
         return
     }
-    if (!IsValidSetting(apiKey, "default_api_key")) {
+    ; Use appropriate field name for validation based on which API provider is being used
+    apiKeyFieldName := (provider == "gemini") ? "default_api_key_gemini" : "default_api_key"
+    LogDebug "API key field name: " apiKeyFieldName " | API key value: " apiKey
+    if (!IsValidSetting(apiKey, apiKeyFieldName)) {
         MsgBox("Error: API key not configured.`n`nPlease check your settings.ini file.", , MSGBOX_ERROR)
         return
     }
